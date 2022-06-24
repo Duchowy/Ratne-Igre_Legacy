@@ -11,7 +11,7 @@ CC = g++
 CFLAGS = -std=c++11 -Wall
 LDFLAGS = -o $(EXE)
 CFDEBUG = -g
-RELEASE_CFLAGS = -O2 -mwindows
+RELEASE_CFLAGS = -O2 -mwindows -static-libstdc++
 
 $(EXE): $(DEPS)
 	g++ -o $@ $^ $(CFLAGS) $(CFDEBUG) $(LIB_PATH) $(LIB)

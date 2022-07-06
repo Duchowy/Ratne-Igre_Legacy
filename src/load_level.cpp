@@ -1,25 +1,25 @@
-#include "main.h"
 #include "jet.h"
 #include "level.h"
+#include "main.h"
 #include "load_level.h"
 
 void map_button(std::array<struct button_scroll, 4> & button,struct curr_selection * choice)
 {
 
-switch(choice->player_jet)
+switch(choice->item.player_jet)
         {
             case MIG21: button[0].name = "MIG21"; button[0].desc = "+Excellent maneuverability\n-Low ammo"; break;
             case F4: button[0].name = "F4 PHANTOM"; button[0].desc = "+Decent maneuverability\n+High ammo\n+Decent survivability"; break;
             case F104: button[0].name = "F104"; button[0].desc = "+High top speed\n-Low survivability\n-Slow turn rate"; break;
             case HARRIER: button[0].name = "HARRIER"; button[0].desc = "+High ammo\n-Decent survivability\n-Terrible maneuverability"; break;
         }
-switch(choice->player_gun)
+switch(choice->item.player_gun)
         {
             case SHVAK: button[1].name = "SHVAK"; button[1].desc = "+High damage\n-Slow firerate"; break;
             case ADEN: button[1].name = "ADEN"; button[1].desc = "+Decent damage\n+Fast firerate\n-High spread\n-Low ammo"; break;
             case GATLING: button[1].name = "GATLING"; button[1].desc = "+Fast firerate\n+High ammo\n-Poor damage"; break;
         }
-switch(choice->player_rkt)
+switch(choice->item.player_msl)
         {
             case IR: button[2].name = "INFRARED"; button[2].desc = "+Fast\n-Heat guided"; break;
             case RAD: button[2].name = "RADAR"; button[2].desc = "+Lock from all angles\n-Poor range"; break;
@@ -68,20 +68,20 @@ switch(number)
 {
     case 0: //jet
     {
-        if(decision > 0 && choice->player_jet < ENUM_JET_TYPE_FIN-1) choice->player_jet++;
-        if(decision < 0 && choice->player_jet > 0) choice->player_jet--;
+        if(decision > 0 && choice->item.player_jet < ENUM_JET_TYPE_FIN-1) choice->item.player_jet++;
+        if(decision < 0 && choice->item.player_jet > 0) choice->item.player_jet--;
     }
     break;
     case 1: //gun
     {
-        if(decision > 0 && choice->player_gun < ENUM_GUN_TYPE_FIN-1) choice->player_gun++;
-        if(decision < 0 && choice->player_gun > 0) choice->player_gun--;
+        if(decision > 0 && choice->item.player_gun < ENUM_GUN_TYPE_FIN-1) choice->item.player_gun++;
+        if(decision < 0 && choice->item.player_gun > 0) choice->item.player_gun--;
     }
     break;
     case 2: //missile
     {
-        if(decision > 0 && choice->player_rkt < ENUM_MSL_TYPE_FIN-1) choice->player_rkt++;
-        if(decision < 0 && choice->player_rkt > 0) choice->player_rkt--;
+        if(decision > 0 && choice->item.player_msl < ENUM_MSL_TYPE_FIN-1) choice->item.player_msl++;
+        if(decision < 0 && choice->item.player_msl > 0) choice->item.player_msl--;
     }
     break;
     case 3: //level
@@ -105,31 +105,33 @@ al_map_rgb(0,20,20));
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y,ALLEGRO_ALIGN_CENTRE,button[i].name.c_str());
 al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y-button[i].height/2-40,200,al_get_font_line_height(alleg5->font),ALLEGRO_ALIGN_CENTRE,button[i].desc.c_str());
 }
-al_draw_scaled_rotated_bitmap(assets->jet_texture[choice->player_jet],al_get_bitmap_width(assets->jet_texture[choice->player_jet])/2,al_get_bitmap_height(assets->jet_texture[choice->player_jet])/2,
-button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[choice->player_jet])-40,2,2,0,0);
+al_draw_scaled_rotated_bitmap(assets->jet_texture[choice->item.player_jet],al_get_bitmap_width(assets->jet_texture[choice->item.player_jet])/2,al_get_bitmap_height(assets->jet_texture[choice->item.player_jet])/2,
+button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[choice->item.player_jet])-40,2,2,0,0);
 
 }
 
 
-int level_select(struct lvl_dat * lvl,struct asset_data * assets, allegro5_data* alleg5)
+int level_select(struct LevelInst * lvl,struct asset_data * assets, allegro5_data* alleg5)
 {
 std::array<struct button_scroll, 4> button;
 struct curr_selection choice;
 
 init_button(button,alleg5);
 
-if(lvl->level_name != ENUM_BKGR_TYPE_FIN)
+if(lvl->level_name != ENUM_BKGR_TYPE_FIN) 
 {
-choice.player_jet = lvl->player.type;
-choice.player_gun = lvl->player.weap[0];
-choice.player_rkt = lvl->player.weap[1];
+choice.item.player_jet = lvl->player.item.player_jet;
+choice.item.player_gun = lvl->player.item.player_gun;
+choice.item.player_msl = lvl->player.item.player_msl;
+choice.item.player_spc = lvl->player.item.player_spc;
 choice.selection = lvl->level_name;
 }
 else
 {
-choice.player_jet = 0;
-choice.player_gun = 0;
-choice.player_rkt = 0;
+choice.item.player_jet = 0;
+choice.item.player_gun = 0;
+choice.item.player_msl = 0;
+choice.item.player_spc = 0;
 choice.selection = 0;
 }
 
@@ -193,50 +195,80 @@ if(redraw && al_is_event_queue_empty(alleg5->queue))
 
 
 
+lvl->player.item = choice.item;
+lvl->level_name = choice.selection;
 
-
-
-switch(choice.selection)
-{
-    case BERLIN:
-    {
-    int amnt[] = {4,6,1,0};
-    lvl->level_name = BERLIN;
-    std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,lvl->enemy_quality[0]);
-    lvl->enemy_amount = 11;
-    lvl->map_height = al_get_bitmap_height(assets->bkgr_texture[lvl->level_name]);
-    lvl->map_width = al_get_bitmap_width(assets->bkgr_texture[lvl->level_name]);
-    break;
-    }
-    case PFERD:
-    {
-    int amnt[] = {2,0,0,2};
-    lvl->level_name = PFERD;
-    std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,lvl->enemy_quality[0]);
-    lvl->enemy_amount = 4;
-    lvl->map_height = al_get_bitmap_height(assets->bkgr_texture[lvl->level_name]);
-    lvl->map_width = al_get_bitmap_width(assets->bkgr_texture[lvl->level_name]);
-    break;
-    }
-    case INDIA:
-    {
-    int amnt[] = {8,6,0,1};
-    lvl->level_name = INDIA;
-    std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,lvl->enemy_quality[0]);
-    lvl->enemy_amount = 15;
-    lvl->map_height = al_get_bitmap_height(assets->bkgr_texture[lvl->level_name]);
-    lvl->map_width = al_get_bitmap_width(assets->bkgr_texture[lvl->level_name]);
-    break;
-    }
-    std::copy(lvl->enemy_quality[0],lvl->enemy_quality[0]+ENUM_JET_TYPE_FIN,lvl->enemy_quality[1]);
-}
-
-lvl->player.weap[0] = choice.player_gun;
-lvl->player.weap[1] = choice.player_rkt;
-jet_init(&(lvl->player),lvl,choice.player_jet,0);
-lvl->player.x=window_width/2;
-lvl->player.y=al_get_bitmap_height(assets->bkgr_texture[lvl->level_name])/2;
 
 if(quit) return QUIT;
-return MISSION;
+return MISSION_INIT;
+}
+
+int spawn_level(asset_data * asset, LevelInst * level)
+{
+    
+    al_clear_to_color(al_map_rgb(0,0,0));
+    al_flip_display();
+    level->jet_q.clear();
+    level->bullet_q.clear();
+    level->msl_q.clear();
+
+
+
+    std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BKGR_TYPE_FIN,level->enemy_quality);
+    level->player = jet_spawn(asset,&level->player.item,0);
+    level->jet_q.push_back(level->player);
+    level->jet_q.front().curr.x = window_width/2;
+    level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
+    enemy_spawn(level,asset);
+    asset->scale_factor = 1.0;
+
+
+    return MISSION;
+}
+
+
+
+
+
+void level_init(asset_data * asset)
+{
+for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
+{
+        
+    switch(i)
+    {
+        case BERLIN:
+        {
+        int amnt[] = {4,6,1,0};
+        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        break;
+        }
+        case PFERD:
+        {
+        int amnt[] = {2,0,0,2};
+        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        break;
+        }
+        case INDIA:
+        {
+        int amnt[] = {8,6,0,1};
+        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        break;
+        }
+    }
+}
+
+
+
+
+
 }

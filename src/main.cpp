@@ -1,6 +1,6 @@
-#include "main.h"
 #include "jet.h"
 #include "level.h"
+#include "main.h"
 #include "load_level.h"
 
 //#define TPS 30.0
@@ -32,9 +32,12 @@ if(!alleg5.display) return 0;
 bool kill = 0;
 asset_data assets;
 texture_init(&assets,1);
-struct lvl_dat lvl = {.level_name = ENUM_BKGR_TYPE_FIN};
-msl_init(&lvl);
-gun_init(&lvl);
+struct LevelInst lvl = {.level_name = ENUM_BKGR_TYPE_FIN};
+jet_init(&assets);
+gun_init(&assets);
+msl_init(&assets);
+level_init(&assets);
+bullet_init(&assets);
 
 short state = SELECTION;
 al_start_timer(alleg5.timer);
@@ -43,6 +46,7 @@ while(!kill)
     switch(state)
     {
     case SELECTION: state = level_select(&lvl,&assets,&alleg5); break;
+    case MISSION_INIT: state = spawn_level(&assets,&lvl); break;
     case MISSION: state = level(&alleg5,&assets,&lvl); break;
     case QUIT: kill = 1; break;
     }

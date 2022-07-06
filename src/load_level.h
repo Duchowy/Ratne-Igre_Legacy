@@ -1,12 +1,10 @@
 #ifndef LOAD_LEVEL_H
 #define LOAD_LEVEL_H
-#include<array>
+#include "common.h"
 
 struct curr_selection
 {
-unsigned short player_jet;
-unsigned short player_gun;
-unsigned short player_rkt;
+struct selection item;
 unsigned short selection;
 };
 
@@ -23,9 +21,9 @@ struct button_scroll
 };
 
 
-int level_select(struct lvl_dat *, struct asset_data *,allegro5_data*);
-
-
+int level_select(struct LevelInst *, struct asset_data *,allegro5_data*);
+int spawn_level(struct asset_data * asset,struct LevelInst * level);
+void level_init(asset_data * asset);
 
 
 #endif

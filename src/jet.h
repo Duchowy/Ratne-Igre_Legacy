@@ -1,54 +1,95 @@
 #ifndef JET_H
 #define JET_H
-#include "enum.h"
+#include "common.h"
 
-struct jet{
-unsigned short type;
-//location, movement
+struct state{
 float x;
 float y;
-float curr_angle;
+float turn_angle;
+float speed;
+};
+struct state_change{
+float turn_speed;
+unsigned short speed_mode;
+};
+struct state_change_limit{
+struct state_change alter;
+float turn_rate;
+float speed_rate[2];
+float speed_limit[2];
+};
+struct selection{
+unsigned short player_jet;
+unsigned short player_gun;
+unsigned short player_msl;
+unsigned short player_spc;
+};
+
+
+
+struct JetInst{
+struct selection item; //items selected
+struct state curr; //position and speed
+struct state_change alter; //speed alteration
 float target_angle;
-float max_angle_w;
-float curr_angle_w;
-float angle_a;
-float speed[3];
-short speed_mode;
-//endof
 bool will_shoot[3];
-unsigned short weap[3];
 unsigned short weap_delay[3];
-//[x][0] for cooldown limit, [x][1] for modification
-unsigned short weap_ammo[3][2];
-int hp[2];
-//unsigned short ability[ENUM_JET_ABILITY_FIN][2];
-//unsigned short status[ENUM_JET_STATUS_FIN][2]; //65535 for unlimited
-//endof
-unsigned short hitbox;
+unsigned short weap_ammo[3];
+int hp;
 unsigned short mode;
 bool at_work;
 };
 
 
-struct missile{
-int type;
-float x;
-float y;
-float curr_angle;
+
+
+struct MslInst{
+unsigned short type;
+struct state curr;
+struct state_change alter;
 float target_angle;
-float max_angle_w;
-float curr_angle_w;
-float angle_a;
-float speed[2];
-float speed_a;
-float targeting_angle;
-short decay[2]; //[x][0] for cooldown limit (reference value), [x][1] for modified
-unsigned short ammo_max;
-int damage;
-int radius;
+short decay;
 };
 
-struct gun{
+struct BulInst{
+unsigned short type;
+struct state curr;
+short decay;
+unsigned int damage;
+int color[3];
+};
+
+struct Bullet{
+float height;
+float width;
+short decay;
+};
+
+
+struct Jet{
+int hp;
+float gun_mult;
+float msl_mult;
+float spc_mult;
+struct state_change_limit alter_limit;
+float default_speed;
+float hitbox;
+};
+
+
+
+struct Missile{
+struct state_change_limit alter_limit;
+short decay;
+unsigned short ammo_max;
+float targeting_angle;
+int damage;
+int radius;
+float default_speed;
+};
+
+
+struct Gun{
 unsigned short ammo_max;
 unsigned short ammo_type;
 unsigned int damage;
@@ -58,33 +99,22 @@ float speed;
 };
 
 
-struct bullet{
-unsigned short type;
-float x;
-float y;
-float angle;
-float speed;
-short decay[2]; //[x][0] for cooldown limit, [x][1] for modified
-unsigned int damage;
-float height;
-float width;
-int color[3];
-};
 
-void shoot(std::vector<jet> &input_vec, std::vector<missile> &series, struct lvl_dat * lvl);
-void shoot(std::vector<jet> &input_vec, std::vector<bullet> &series, struct lvl_dat * lvl);
-void target(std::vector<jet>::iterator object, std::vector<jet>::iterator target);
-void target(std::vector<jet> &input_vec, std::vector<missile> &shell_vec);
-void action(std::vector<jet> &input_vec, std::vector<bullet> &shell_vec, struct lvl_dat * limit);
-void decision(std::vector<jet> &input_vec, struct lvl_dat * limit);
+
+void shoot(struct LevelInst * level, struct asset_data * asset);
+void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target);
+void target(struct LevelInst * level, struct asset_data * asset);
+void action(struct LevelInst * level, struct asset_data * asset);
+void decision(std::vector<JetInst> &input_vec, struct asset_data * limit);
 
 float angle_difference(float current, float target);
 
-void gun_init(struct lvl_dat*);
-void msl_init(struct lvl_dat*);
-void bullet_init(struct bullet *, unsigned short);
-void jet_init(struct jet *,struct lvl_dat*,unsigned short,bool);
-void enemy_init(std::vector<jet> &object, struct lvl_dat *);
+void gun_init(struct asset_data *);
+void msl_init(struct asset_data *);
+void bullet_init(struct asset_data *);
+void jet_init(struct asset_data * );
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot);
+void enemy_spawn(struct LevelInst * level, struct asset_data * asset);
 
 
 

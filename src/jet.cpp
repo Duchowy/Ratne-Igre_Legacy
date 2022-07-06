@@ -1,86 +1,84 @@
-#include "main.h"
 #include "jet.h"
 #include "level.h"
+#include "main.h"
 
 
-void shoot(std::vector<jet> &input_vec, std::vector<missile> &series, struct lvl_dat * lvl)
+void shoot(struct LevelInst * level, struct asset_data * asset)
 {
-for(std::vector<jet>::iterator object = input_vec.begin(); object != input_vec.end(); object++)
+for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
 {
-    if(object->weap_ammo[1][1] > 0 && object->will_shoot[1] && !object->weap_delay[1])
+    if(object->weap_ammo[1] > 0 && object->will_shoot[1] && !object->weap_delay[1]) //missile
     {
-        missile ap = lvl->msl_data[object->weap[1]];
-        ap.speed[1] = object->speed[object->speed_mode];
-        ap.curr_angle = ap.target_angle = object->curr_angle;
-        ap.curr_angle_w = 0;
-        ap.x=object->x + cos(object->curr_angle)*(object->hitbox+ap.radius+0.5);
-        ap.y=object->y + sin(object->curr_angle)*(object->hitbox+ap.radius+0.5);
-        series.push_back(ap);
+        
+        MslInst ap;
+        ap.type = object->item.player_msl;
+        ap.curr.speed = object->curr.speed;
+        ap.curr.turn_angle = ap.target_angle = object->curr.turn_angle;
+        ap.alter.turn_speed = 0.;
+        ap.alter.speed_mode = 2;
+        ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
+        ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
+        ap.decay = asset->msl_data[ap.type].decay;
+        level->msl_q.push_back(ap);
         object->weap_delay[1] = 120;
-        object->weap_ammo[1][1]--;
+        object->weap_ammo[1]--;
     }
+    
 
-
-}
-}
-
-void shoot(std::vector<jet> &input_vec, std::vector<bullet> &series, struct lvl_dat * lvl)
-{
-for(std::vector<jet>::iterator object = input_vec.begin(); object != input_vec.end(); object++)
-{
-    if(object->weap_ammo[0][1] > 0 && object->will_shoot[0] && !object->weap_delay[0] ) ////weap_ammo tested!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if(object->weap_ammo[0] > 0 && object->will_shoot[0] && !object->weap_delay[0] ) //bullet
     {
-        bullet ap;
+        BulInst ap;
         ap.color[0] = rand()%20+230;
         ap.color[1] = rand()%20+190;
         ap.color[2] = rand()%10+30;
 
-        ap.x=object->x + cos(object->curr_angle)*(object->hitbox+0.5);
-        ap.y=object->y + sin(object->curr_angle)*(object->hitbox+0.5);
-        ap.angle=object->curr_angle;
-        ap.angle += (float)rand()/RAND_MAX * 2 * lvl->gun_data[object->weap[0]].spread - lvl->gun_data[object->weap[0]].spread;
+        ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
+        ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
+        ap.curr.turn_angle=object->curr.turn_angle;
+        ap.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->gun_data[object->item.player_gun].spread - asset->gun_data[object->item.player_gun].spread;
 
 
-        bullet_init(&ap,lvl->gun_data[(object->weap[0])].ammo_type);
-        ap.speed = lvl->gun_data[object->weap[0]].speed;
-        ap.damage = lvl->gun_data[(object->weap[0])].damage;
-        ap.type = lvl->gun_data[(object->weap[0])].ammo_type;
-        series.push_back(ap);
+        ap.curr.speed = asset->gun_data[object->item.player_gun].speed;
+        ap.damage = asset->gun_data[object->item.player_gun].damage;
+        ap.type = asset->gun_data[object->item.player_gun].ammo_type;
+        ap.decay = asset->bul_data[asset->gun_data[object->item.player_gun].ammo_type].decay;
+        level->bullet_q.push_back(ap);
 
-        object->weap_delay[0] = lvl->gun_data[(object->weap[0])].weap_delay;
-        object->weap_ammo[0][1]--;
+        object->weap_delay[0] = asset->gun_data[object->item.player_gun].weap_delay;
+        object->weap_ammo[0]--;
     }
+
 }
 }
 
-void target(std::vector<jet>::iterator object, std::vector<jet>::iterator target)
+void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target)
 {
     float target_a[2];
-    target_a[0] =  target->x + 16*cos(target->curr_angle)*target->speed[target->speed_mode];
-    target_a[1] = target->y + 16*sin(target->curr_angle)*target->speed[target->speed_mode];
+    target_a[0] =  target->curr.x + 16*cos(target->curr.turn_angle)*target->curr.speed;
+    target_a[1] = target->curr.y + 16*sin(target->curr.turn_angle)*target->curr.speed;
 
-object->target_angle = atan2(( target_a[1] - object->y) ,(target_a[0] - object->x));
+object->target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
 }
 
-void target(std::vector<jet> &input_vec, std::vector<missile> &shell_vec)
+void target(struct LevelInst * level, struct asset_data * asset)
 {
-for(std::vector<missile>::iterator shell = shell_vec.begin(); shell != shell_vec.end(); shell++)
+for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level->msl_q.end(); shell++)
 {
     float new_target = shell->target_angle;
     float min_deviation = 2*PI;
     //float aot = 0;
 
-    for(std::vector<jet>::iterator target = input_vec.begin(); target != input_vec.end(); target++)
+    for(std::vector<JetInst>::iterator target = level->jet_q.begin(); target != level->jet_q.end(); target++)
     {
-        float distance = sqrt( pow( target->x - shell->x ,2) +  pow(  target->y - shell->y ,2));
-        float new_angle = atan2(( target->y - shell->y) ,(target->x - shell->x));
-        float deviation = fabs(angle_difference(shell->curr_angle,new_angle));
+        float distance = sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2));
+        float new_angle = atan2(( target->curr.y - shell->curr.y) ,(target->curr.x - shell->curr.x));
+        float deviation = fabs(angle_difference(shell->curr.turn_angle,new_angle));
         switch(shell->type)
         {
             case IR:
             {
-            float angle_of_attack = fabs(angle_difference(shell->curr_angle,target->curr_angle)) ;
-            if( angle_of_attack < PI/2  &&  distance < shell->decay[1] * shell->speed[0]  &&  deviation  < shell->targeting_angle )
+            float angle_of_attack = fabs(angle_difference(shell->curr.turn_angle,target->curr.turn_angle)) ;
+            if( angle_of_attack < PI/2  &&  distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle )
             {
                 
 
@@ -95,7 +93,7 @@ for(std::vector<missile>::iterator shell = shell_vec.begin(); shell != shell_vec
             break;
             case RAD:
             {
-                if(distance < shell->decay[1] * shell->speed[0]  &&  deviation  < shell->targeting_angle )
+                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle )
                 {
                     
 
@@ -109,38 +107,38 @@ for(std::vector<missile>::iterator shell = shell_vec.begin(); shell != shell_vec
             }
             break;
         }
-    }
+    }//eof jet iteration
     shell->target_angle = new_target;
 }
 
 
 }
 
-void action(std::vector<jet> &input_vec, std::vector<bullet> &shell_vec, struct lvl_dat * limit)
+void action(struct LevelInst * level, struct asset_data * asset)
 {
 
-for(std::vector<jet>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
+for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
 {
 for(int i =0; i< 3; i++) object->will_shoot[i] = 0;
 switch(object->mode)
 {
     case PATROL:
     {
-        object->speed_mode = AIRBRAKE;
+        object->alter.speed_mode = AIRBRAKE;
         if(object->at_work)
         {
-            if(object->curr_angle == object->target_angle) object->at_work = 0;
+            if(object->curr.turn_angle == object->target_angle) object->at_work = 0;
             else break;
         }
         else
-        {
-            float r = object->speed[object->speed_mode]/object->max_angle_w;
-            if(object->x <= 3*r || object->x >= limit->map_width - 3*r || object->y <= 3*r || object->y >= limit->map_height-3*r)
+        { 
+            float r = object->curr.speed/asset->jet_data[object->item.player_jet].alter_limit.alter.turn_speed;
+            if(object->curr.x <= 3*r || object->curr.x >= asset->lvl_data[level->level_name].map_width - 3*r || object->curr.y <= 3*r || object->curr.y >= asset->lvl_data[level->level_name].map_height-3*r)
             {
                 int target_c[2] = {0,0};
-                target_c[0] = limit->map_width/2 + rand()%240-120;
-                target_c[1] = limit->map_height/14 * (rand()%13 + 1);
-                object->target_angle  = atan2(( target_c[1] - object->y) ,(target_c[0] - object->x));
+                target_c[0] = asset->lvl_data[level->level_name].map_width/2 + rand()%240-120;
+                target_c[1] = asset->lvl_data[level->level_name].map_height/14 * (rand()%13 + 1);
+                object->target_angle  = atan2(( target_c[1] - object->curr.y) ,(target_c[0] - object->curr.x));
             }
             object->at_work = 1;
         }
@@ -148,18 +146,18 @@ switch(object->mode)
     }
     case PURSUIT:
     {
-        target(object,input_vec.begin());
-        if(fabs(angle_difference(object->curr_angle,object->target_angle)) < object->angle_a && rand()%600 == 0) object->will_shoot[1] = 1; //rocket
-        object->speed_mode = AFTERBURNER;
+        target(object,level->jet_q.begin());
+        if(fabs(angle_difference(object->curr.turn_angle,object->target_angle)) < asset->jet_data[object->item.player_jet].alter_limit.turn_rate && rand()%600 == 0) object->will_shoot[1] = 1; //rocket
+        object->alter.speed_mode = AFTERBURNER;
         break;
     }
     case DOGFIGHT:
     {
-        target(object,input_vec.begin());
-        float rad_dist = angle_difference(object->curr_angle,object->target_angle);
-        if(fabs(rad_dist) < object->max_angle_w )  object->will_shoot[0] = 1; //gun
-        if(fabs(rad_dist) > PI/2) object->speed_mode = AFTERBURNER;
-        else object->speed_mode = STANDARD;
+        target(object,level->jet_q.begin());
+        float rad_dist = angle_difference(object->curr.turn_angle,object->target_angle);
+        if(fabs(rad_dist) < asset->jet_data[object->item.player_jet].alter_limit.alter.turn_speed )  object->will_shoot[0] = 1; //gun
+        if(fabs(rad_dist) > PI/2) object->alter.speed_mode = AFTERBURNER;
+        else object->alter.speed_mode = STANDARD;
         break;
     }
 
@@ -173,12 +171,13 @@ switch(object->mode)
 
 }
 
-void decision(std::vector<jet> &input_vec, struct lvl_dat * limit)
+void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 {
-std::vector<jet>::iterator player = input_vec.begin();
-for(std::vector<jet>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
+std::vector<JetInst>::iterator player = input_vec.begin();
+for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
 {
 float dist = distance(object,player);
+
 
 
 bool triggered = 0;
@@ -186,7 +185,7 @@ if(object->mode == PURSUIT &&  dist < 350) //at pursuit
 {
 triggered = 1;
 }
-else if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp[1] / object->hp[0])) * 100 ))
+else if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
     {
         triggered = 1;
     }
@@ -211,24 +210,26 @@ if(triggered)
 ###############################
 ###############################
 */
-void bullet_init(struct bullet * object, unsigned short type)
+void bullet_init(struct asset_data * lvl)
 {
-    switch (type)
+    for(int i = 0; i< ENUM_BULLET_TYPE_FIN;i++)
     {
-        case SLUG:
+        switch (i)
         {
-            object->type = type;
-            object->decay[0] = 90;
-            object->decay[1] = 90;
-            object->width = 0.7;
-            object->height = 1.2;
-            break;
+            case SLUG:
+            {
+                lvl->bul_data[i].decay = 90;
+                lvl->bul_data[i].width = 0.7;
+                lvl->bul_data[i].height = 1.2;
+                break;
+            }
+        
         }
-    
     }
+        
 }
 
-void gun_init(struct lvl_dat * lvl)
+void gun_init(struct asset_data * lvl)
 {
 for(int i =0; i< ENUM_GUN_TYPE_FIN; i++)
 {
@@ -270,144 +271,183 @@ for(int i =0; i< ENUM_GUN_TYPE_FIN; i++)
 }
 }
 
-void msl_init(struct lvl_dat * lvl)
+void msl_init(struct asset_data * lvl)
 {
 for(int i =0; i< ENUM_MSL_TYPE_FIN; i++)
 {
       switch (i)
         {
             case IR:
-            lvl->msl_data[i].type = IR;
-            lvl->msl_data[i].angle_a = 0.005;
-            lvl->msl_data[i].max_angle_w = 0.02;
-            lvl->msl_data[i].speed[0] = 6.5;
-            lvl->msl_data[i].speed_a = 0.2;
+            lvl->msl_data[i].alter_limit.turn_rate = 0.005;
+            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.02;
+            lvl->msl_data[i].alter_limit.speed_limit[1] = 6.5;
+            lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
             lvl->msl_data[i].radius = 3;
             lvl->msl_data[i].targeting_angle = 1;
             lvl->msl_data[i].damage = 100;
             lvl->msl_data[i].ammo_max = 14;
-            lvl->msl_data[i].decay[0] = lvl->msl_data[i].decay[1] = 130;
+            lvl->msl_data[i].decay = 130;
             break;
             case RAD:
-            lvl->msl_data[i].type = RAD;
-            lvl->msl_data[i].angle_a = 0.005;
-            lvl->msl_data[i].max_angle_w = 0.035;
-            lvl->msl_data[i].speed[0] = 5.5;
-            lvl->msl_data[i].speed_a = 0.2;
+            lvl->msl_data[i].alter_limit.turn_rate = 0.005;
+            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.035;
+            lvl->msl_data[i].alter_limit.speed_limit[1] = 5.5;
+            lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
             lvl->msl_data[i].radius = 3;
             lvl->msl_data[i].targeting_angle = 0.7;
             lvl->msl_data[i].damage = 100;
             lvl->msl_data[i].ammo_max = 10;
-            lvl->msl_data[i].decay[0] = lvl->msl_data[i].decay[1] = 180;
+            lvl->msl_data[i].decay = 180;
             break;
         }
 }
 }
 
-
-void jet_init(struct jet * object, struct lvl_dat * data,unsigned short type,bool bot)
+void jet_init(struct asset_data * data)
 {
-    switch (type)
+    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++)
     {
-        case MIG21:
+        switch(i)
         {
-        object->type = MIG21;
-        object->max_angle_w = 0.03;
-        object->angle_a = 0.0075;
-        object->speed[0] = 1.8;
-        object->speed[1] = 2.6;
-        object->speed[2] = 2.9;
-        object->hp[1] = 100;
-        object->hitbox = 6;
-        if(bot) object->weap[0] = SHVAK;
-        if(bot) object->weap[1] = IR;
-        object->weap_ammo[0][0] = object->weap_ammo[0][1] = data->gun_data[object->weap[0]].ammo_max * 0.8;
-        object->weap_ammo[1][0] = object->weap_ammo[1][1] = data->msl_data[object->weap[1]].ammo_max * 1;
-        break;
-        }
-        case F4:
-        {
-        object->type = F4;
-        object->max_angle_w = 0.026;
-        object->angle_a = 0.009;
-        object->speed[0] = 2.0;
-        object->speed[1] = 2.4;
-        object->speed[2] = 3.0;
-        object->hp[1] = 110;
-        object->hitbox = 6;
-        if(bot) object->weap[0] = GATLING;
-        if(bot) object->weap[1] = IR;
-        object->weap_ammo[0][0] = object->weap_ammo[0][1] = data->gun_data[object->weap[0]].ammo_max * 1.1;
-        object->weap_ammo[1][0] = object->weap_ammo[1][1] = data->msl_data[object->weap[1]].ammo_max * 1.1;
-        break;
-        }
-        case F104:
-        {
-        object->type = F104;
-        object->max_angle_w = 0.017;
-        object->angle_a = 0.009;
-        object->speed[0] = 2.4;
-        object->speed[1] = 3.0;
-        object->speed[2] = 3.4;
-        object->hp[1] = 90;
-        object->hitbox = 5;
-        if(bot) object->weap[0] = GATLING;
-        if(bot) object->weap[1] = IR;
-        object->weap_ammo[0][0] = object->weap_ammo[0][1] = data->gun_data[object->weap[0]].ammo_max * 1;
-        object->weap_ammo[1][0] = object->weap_ammo[1][1] = data->msl_data[object->weap[1]].ammo_max * 0.8;
-        break;
-        }
-        case HARRIER:
-        {
-        object->type = HARRIER;
-        object->max_angle_w = 0.017;
-        object->angle_a = 0.009;
-        object->speed[0] = 1.5;
-        object->speed[1] = 1.9;
-        object->speed[2] = 2.2;
-        object->hp[1] = 110;
-        object->hitbox = 6;
-        if(bot) object->weap[0] = ADEN;
-        if(bot) object->weap[1] = IR;
-        object->weap_ammo[0][0] = object->weap_ammo[0][1] = data->gun_data[object->weap[0]].ammo_max * 1.1;
-        object->weap_ammo[1][0] = object->weap_ammo[1][1] = data->msl_data[object->weap[1]].ammo_max * 1.4;
-        break;
+            case MIG21:
+            {
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0125;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0075;
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.03;
+            data->jet_data[i].alter_limit.turn_rate = 0.0075;
+            data->jet_data[i].alter_limit.speed_limit[0] = 1.8;
+            data->jet_data[i].default_speed = 2.6;
+            data->jet_data[i].alter_limit.speed_limit[1] = 2.9;
+            data->jet_data[i].hp = 100;
+            data->jet_data[i].hitbox = 6;
+            data->jet_data[i].gun_mult = 0.8;
+            data->jet_data[i].msl_mult = 1;
+            data->jet_data[i].spc_mult = 0.9;
+            break;
+            }
+            case F4:
+            {
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.026;
+            data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.speed_limit[0] = 2.0;
+            data->jet_data[i].default_speed = 2.4;
+            data->jet_data[i].alter_limit.speed_limit[1] = 3.0;
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0125;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0075;
+            data->jet_data[i].hp = 110;
+            data->jet_data[i].hitbox = 6;
+            data->jet_data[i].gun_mult = 1.1;
+            data->jet_data[i].msl_mult = 1.1;
+            data->jet_data[i].spc_mult = 1.1;
+            break;
+            }
+            case F104:
+            {
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
+            data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.speed_limit[0] = 2.4;
+            data->jet_data[i].default_speed = 3.0;
+            data->jet_data[i].alter_limit.speed_limit[1] = 3.4;
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
+            data->jet_data[i].hp = 90;
+            data->jet_data[i].hitbox = 5;
+            data->jet_data[i].gun_mult = 1;
+            data->jet_data[i].msl_mult = 0.8;
+            data->jet_data[i].spc_mult = 0.8;
+            break;
+            }
+            case HARRIER:
+            {
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0050;
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
+            data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.speed_limit[0] = 1.5;
+            data->jet_data[i].default_speed = 1.9;
+            data->jet_data[i].alter_limit.speed_limit[1] = 2.2;
+            data->jet_data[i].hp = 110;
+            data->jet_data[i].hitbox = 6;
+            data->jet_data[i].gun_mult = 1.1;
+            data->jet_data[i].msl_mult = 1.4;
+            data->jet_data[i].spc_mult = 1.4;
+            break;
+            }
+
         }
 
     }
-    
-    if(bot)
-    {
-        if(rand()%2) object->curr_angle = (float)rand()/(RAND_MAX) *1.8 + 1;
-        else object->curr_angle = (float)rand()/(RAND_MAX) *(-1.8) - 1.2;
-    }
-    else object->curr_angle = 0.0;
-    if(bot) object->weap_ammo[1][0] = object->weap_ammo[1][1] = object->weap_ammo[1][0]*0.3;
-    object->hp[0] = object->hp[1];
-    object->target_angle = 0.0;
-    object->curr_angle_w = 0.0;
-    for(int i =0; i < 3; i++) object->weap_delay[i] = 0;
-    object->speed_mode = STANDARD;
-
-
-
 }
 
-void enemy_init(std::vector<jet> &object, struct lvl_dat * lvl)
+
+
+
+
+
+
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot)
 {
-float x = lvl->map_width*0.7, y = lvl->map_height/(lvl->enemy_amount+1);
-std::copy(lvl->enemy_quality[0],lvl->enemy_quality[0]+ENUM_JET_TYPE_FIN,lvl->enemy_quality[1]);
+    JetInst object;
+    object.item = *selected;
+    object.hp = asset->jet_data[selected->player_jet].hp;
+    if(bot)
+    {
+        if(rand()%2) object.curr.turn_angle = (float)rand()/(RAND_MAX) *1.8 + 1;
+        else object.curr.turn_angle = (float)rand()/(RAND_MAX) *(-1.8) - 1.2;
+       
+    }
+    else
+    {
+        object.curr.turn_angle = 0.0;
+
+    }
+    object.target_angle = object.curr.turn_angle;
+    object.alter.speed_mode = STANDARD;
+    object.alter.turn_speed = 0.;
+    object.curr.speed = asset->jet_data[selected->player_jet].default_speed;
+    object.at_work = 0;
+    object.weap_ammo[0] = (float) asset->jet_data[selected->player_jet].gun_mult * asset->gun_data[selected->player_gun].ammo_max;
+    object.weap_ammo[1] = (float) asset->jet_data[selected->player_jet].msl_mult * asset->msl_data[selected->player_msl].ammo_max;
+    object.curr.x = -1;
+    object.curr.y = -1;
+
+    for(int i =0; i < 3; i++) object.will_shoot[i] = 0;
+    for(int i =0; i < 3; i++) object.weap_delay[i] = 0;
+
+
+    return object;
+}
+
+void enemy_spawn(struct LevelInst * level, struct asset_data * asset)
+{
+int enemy_amount = 0;
+
+for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level->level_name].enemy_quality[i];
+float x = (float) asset->lvl_data[level->level_name].map_width*0.7, y = (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
+
+struct selection templat[ENUM_JET_TYPE_FIN] = {
+{.player_jet = MIG21,.player_gun=SHVAK,.player_msl=IR},
+{.player_jet = F4, .player_gun = GATLING, .player_msl = RAD},
+{.player_jet = F104, .player_gun = GATLING, .player_msl = IR},
+{.player_jet = HARRIER, .player_gun = ADEN, .player_msl = IR}
+};
+
+
+
+
+
+std::copy(asset->lvl_data[level->level_name].enemy_quality,asset->lvl_data[level->level_name].enemy_quality+ENUM_JET_TYPE_FIN,level->enemy_quality);
+
 
 for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++)
 {
-    for(int q = 0; q< lvl->enemy_quality[0][i]; q++)
+    for(int q = 0; q< level->enemy_quality[i]; q++)
     {
-        jet temp;
-        jet_init(&temp,lvl,i,1);
-        temp.x = x + rand()%20-10;
-        temp.y = y;
-        object.push_back(temp);
-        y += lvl->map_height/(lvl->enemy_amount+1);
+        JetInst temp = jet_spawn(asset,templat+i,1);
+        temp.curr.x = x + rand()%20-10;
+        temp.curr.y = y;
+        level->jet_q.push_back(temp);
+        y += (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
 
     }
 }

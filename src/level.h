@@ -5,21 +5,29 @@
 
 #ifndef LEVEL_H
 #define LEVEL_H
-struct lvl_dat{
-unsigned short level_name;
-unsigned short enemy_amount;
-unsigned short enemy_quality[2][ENUM_JET_TYPE_FIN]; //[0][X] for reference, [1][x] for editing
-float scale;
+#include "common.h"
+struct Level{
+unsigned short enemy_quality[ENUM_JET_TYPE_FIN];
 unsigned int map_width;
 unsigned int map_height;
-struct gun gun_data[ENUM_GUN_TYPE_FIN];
-struct missile msl_data[ENUM_MSL_TYPE_FIN];
-struct jet player;
+short next_level;
 };
 
-int level(allegro5_data*,asset_data*,lvl_dat*);
+struct LevelInst{
+unsigned short level_name;
+unsigned short enemy_quality[ENUM_JET_TYPE_FIN];
+std::vector<BulInst> bullet_q;
+std::vector<JetInst> jet_q;
+std::vector<MslInst> msl_q;
+float scale;
+
+struct JetInst player;
+};
+
+
+int level(allegro5_data*,asset_data*,LevelInst*);
 float angle_difference(float current, float target);
-float distance(std::vector<jet>::iterator current, std::vector<jet>::iterator target);
-float rad_distance(std::vector<jet>::iterator current, std::vector<jet>::iterator target);
+float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
+float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
 
 #endif

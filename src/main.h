@@ -13,10 +13,12 @@ struct asset_data
 {
 float scale_factor;
 ALLEGRO_BITMAP * bkgr_texture [ENUM_BKGR_TYPE_FIN];
-ALLEGRO_BITMAP * jet_texture [ENUM_JET_TYPE_FIN];
+ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
 ALLEGRO_BITMAP * bullet_texture [ENUM_BULLET_TYPE_FIN][2];
 ALLEGRO_BITMAP * msl_texture [ENUM_MSL_TYPE_FIN];
-struct Jet jet_data[ENUM_JET_TYPE_FIN];
+struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
+struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];
+struct Jet jet_data[ENUM_BOSS_TYPE_FIN];
 struct Gun gun_data[ENUM_GUN_TYPE_FIN];
 struct Bullet bul_data[ENUM_BULLET_TYPE_FIN];
 struct Missile msl_data[ENUM_MSL_TYPE_FIN];

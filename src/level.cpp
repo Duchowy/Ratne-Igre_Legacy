@@ -34,6 +34,15 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
     {
         if(object->weap_delay[i]) object->weap_delay[i]--;
     }
+    if(object->ability)
+    {
+        for(int i = 0; i< ENUM_BOSS_ABILITY_FIN; i++)
+        {
+            if(object->ability[i].cooldown) object->ability[i].cooldown--;
+            if(object->ability[i].duration) object->ability[i].duration--;
+        }
+    }
+
 }
 
 
@@ -87,7 +96,13 @@ for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != inp
                 target->hp -= shell->damage;
                 if(target->hp < 0)
                 {
-                    if(target != input->jet_q.begin()) input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+                    if(target != input->jet_q.begin())
+                    {
+                        input->enemy_quality[target->item.player_jet]--;
+                        if(target->ability) delete target->ability;
+                        input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+                    }
+                     
                 }
                 break;
             }
@@ -121,7 +136,13 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
 
         if(target->hp < 0)
         {
-            if(target != input->jet_q.begin()) input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+            if(target != input->jet_q.begin())
+            {
+                input->enemy_quality[target->item.player_jet]--;
+                if(target->ability) delete target->ability;
+                input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+            }
+             
         }
 		break;
 		}
@@ -172,7 +193,16 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
     al_draw_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],23,23,
     x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
     al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-    al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+    if(asset->jet_data[object->item.player_jet].isBoss) 
+    {
+        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
+        al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+    }
+    else 
+    {
+        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
+        al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+    }
     }
     
 
@@ -230,13 +260,14 @@ al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_he
 ########*/
 
 
-
-
 float current_HP = (float) player->hp / asset->jet_data[player->item.player_jet].hp;
 if(current_HP > 0.9) al_draw_text(font,al_map_rgb(0,240,0),window_width-al_get_text_width(font,"OK")-10,window_height-20,0,"OK");
 else if ( current_HP > 0.7) al_draw_text(font,al_map_rgb(240,240,0),window_width-al_get_text_width(font,"OK")-10,window_height-20, 0,"OK");
 else if( current_HP > 0.3) al_draw_text(font,al_map_rgb(240,240,0),window_width-al_get_text_width(font,"Damaged")-10,window_height-20,0,"Damaged");
 else al_draw_text(font,al_map_rgb(240,0,0),window_width-al_get_text_width(font,"Damaged")-10,window_height-20,0,"Damaged");
+
+
+
 
 /*########
 ## AMMO ##
@@ -262,11 +293,13 @@ al_map_rgb(240,230,140),1);
 ## RADAR #
 ########*/
 
+
+
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
         float rad_dist = rad_distance(player,object);
-        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6) 
+        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6 && !asset->jet_data[object->item.player_jet].isBoss) 
         {
             ALLEGRO_COLOR indicator;
             if(distance(player,object) < 800) indicator = al_map_rgb(240,240,0);
@@ -275,6 +308,8 @@ al_map_rgb(240,230,140),1);
             window_width/2 + 28*cos(rad_pointer),window_height/2 + 28*sin(rad_pointer),
             indicator,0.6);
         }
+        
+
     }
 
 }
@@ -290,15 +325,22 @@ if(assets->scale_factor > 1.0) assets->scale_factor = 1.0;
 al_set_mouse_z(0); //ticker bound
 }
 
+int alive_enemy_jets(LevelInst * lvl)
+{
+    int sum = 0;
+    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++) sum+= lvl->enemy_quality[i];
+
+    return sum;
+}
+
+
+
+
 
 int level(allegro5_data*alleg5, asset_data * assets, LevelInst * lvl)
 {
 bool kill = 0;
 bool redraw = 1;
-
-
-
-
 
 
 
@@ -332,7 +374,8 @@ while(!kill)
                 lvl->jet_q.front().will_shoot[1] = 1;
                 break;
                 case ALLEGRO_KEY_ESCAPE:
-                return SELECTION;
+                if(lvl->level_name < ENUM_LVL_TYPE_FIN) return SELECTION;
+                else return MISSION_INIT;
                 break;
             }
         break;
@@ -387,6 +430,14 @@ while(!kill)
         cooldown(lvl->jet_q);
 
         for(int i =1; i<3; i++) lvl->jet_q.front().will_shoot[i] = 0;
+
+        if(!alive_enemy_jets(lvl) && assets->lvl_data[lvl->level_name].next_level != ENUM_BKGR_TYPE_FIN)
+        {
+            lvl->level_name = assets->lvl_data[lvl->level_name].next_level;
+            return MISSION_INIT;
+        }
+
+
     }
 }
 

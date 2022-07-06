@@ -11,6 +11,8 @@ float speed;
 struct state_change{
 float turn_speed;
 unsigned short speed_mode;
+bool rotatable;
+bool acceleratable;
 };
 struct state_change_limit{
 struct state_change alter;
@@ -24,6 +26,11 @@ unsigned short player_gun;
 unsigned short player_msl;
 unsigned short player_spc;
 };
+struct Ability
+{
+    int duration;
+    int cooldown;
+};
 
 
 
@@ -32,12 +39,15 @@ struct selection item; //items selected
 struct state curr; //position and speed
 struct state_change alter; //speed alteration
 float target_angle;
-bool will_shoot[3];
+unsigned short mode;
+int hp;
 unsigned short weap_delay[3];
 unsigned short weap_ammo[3];
-int hp;
-unsigned short mode;
+bool will_shoot[3];
 bool at_work;
+bool status[ENUM_JET_STATUS_FIN];
+bool isBot;
+struct Ability * ability;
 };
 
 
@@ -49,6 +59,8 @@ struct state curr;
 struct state_change alter;
 float target_angle;
 short decay;
+bool status[ENUM_MSL_STATUS_FIN];
+bool isBotLaunched;
 };
 
 struct BulInst{
@@ -74,7 +86,17 @@ float spc_mult;
 struct state_change_limit alter_limit;
 float default_speed;
 float hitbox;
+bool isBoss;
 };
+
+
+
+struct Boss{
+    bool ability[ENUM_BOSS_ABILITY_FIN];
+};
+
+
+
 
 
 
@@ -113,6 +135,8 @@ void gun_init(struct asset_data *);
 void msl_init(struct asset_data *);
 void bullet_init(struct asset_data *);
 void jet_init(struct asset_data * );
+void boss_init(struct asset_data * );
+void abl_init(struct asset_data * );
 JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot);
 void enemy_spawn(struct LevelInst * level, struct asset_data * asset);
 

@@ -19,6 +19,8 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
         ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
         ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
         ap.decay = asset->msl_data[ap.type].decay;
+        for(int i = 0; i< ENUM_MSL_STATUS_FIN;i++) ap.status[i] = 0;
+        ap.isBotLaunched = object->isBot;
         level->msl_q.push_back(ap);
         object->weap_delay[1] = 120;
         object->weap_ammo[1]--;
@@ -64,6 +66,7 @@ void target(struct LevelInst * level, struct asset_data * asset)
 {
 for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level->msl_q.end(); shell++)
 {
+    if(shell->status[CONTROLLED] == 1) continue;
     float new_target = shell->target_angle;
     float min_deviation = 2*PI;
     //float aot = 0;
@@ -93,7 +96,7 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
             break;
             case RAD:
             {
-                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle )
+                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle && shell->isBotLaunched != target->isBot)
                 {
                     
 
@@ -147,7 +150,21 @@ switch(object->mode)
     case PURSUIT:
     {
         target(object,level->jet_q.begin());
-        if(fabs(angle_difference(object->curr.turn_angle,object->target_angle)) < asset->jet_data[object->item.player_jet].alter_limit.turn_rate && rand()%600 == 0) object->will_shoot[1] = 1; //rocket
+        if(fabs(angle_difference(object->curr.turn_angle,object->target_angle)) < asset->jet_data[object->item.player_jet].alter_limit.turn_rate) 
+        {
+            if(asset->jet_data[object->item.player_jet].isBoss)
+            {
+                if(rand()%300 == 0) object->will_shoot[1] = 1; //rocket
+            }
+            else
+            {
+                if(rand()%600 == 0) object->will_shoot[1] = 1; //launch rocket
+            }
+
+            
+        }
+        
+        
         object->alter.speed_mode = AFTERBURNER;
         break;
     }
@@ -176,40 +193,163 @@ void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 std::vector<JetInst>::iterator player = input_vec.begin();
 for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
 {
-float dist = distance(object,player);
+    float dist = distance(object,player);
 
-
-
-bool triggered = 0;
-if(object->mode == PURSUIT &&  dist < 350) //at pursuit
-{
-triggered = 1;
-}
-else if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
+    bool triggered = 0;
+    if(limit->jet_data[object->item.player_jet].isBoss)
     {
         triggered = 1;
+        if(
+            (
+            (dist > 350 && fabs(rad_distance(object,player)) < PI/6) || (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
+            )
+         && object->ability[BOSS_ABILITY::DASH].cooldown == 0 
+        )
+        {
+            object->ability[BOSS_ABILITY::DASH].cooldown = limit->abl_data[BOSS_ABILITY::DASH].cooldown;
+            object->ability[BOSS_ABILITY::DASH].duration = limit->abl_data[BOSS_ABILITY::DASH].duration;
+        };
+
+
+
     }
-else object->mode = PATROL;
+    else
+    {
+        if(object->mode == PURSUIT &&  dist < 350) //at pursuit
+        {
+        triggered = 1;
+        }
+        else if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
+            {
+                triggered = 1;
+            }
+        else object->mode = PATROL;
+    }
+    if(triggered)
+        {
+            if(dist < 160) object->mode = DOGFIGHT;
+            else object->mode = PURSUIT;
+        }
 
-if(triggered)
+    }
+
+}
+
+
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot)
 {
-    if(dist < 160) object->mode = DOGFIGHT;
-    else object->mode = PURSUIT;
+    JetInst object;
+    object.item = *selected;
+    object.hp = asset->jet_data[selected->player_jet].hp;
+    if(bot)
+    {
+        if(rand()%2) object.curr.turn_angle = (float)rand()/(RAND_MAX) *1.8 + 1;
+        else object.curr.turn_angle = (float)rand()/(RAND_MAX) *(-1.8) - 1.2;
+       
+    }
+    else
+    {
+        object.curr.turn_angle = 0.0;
+
+    }
+    object.target_angle = object.curr.turn_angle;
+    object.alter.speed_mode = STANDARD;
+    object.alter.turn_speed = 0.;
+    object.curr.speed = asset->jet_data[selected->player_jet].default_speed;
+    object.at_work = 0;
+    object.weap_ammo[0] = (float) asset->jet_data[selected->player_jet].gun_mult * asset->gun_data[selected->player_gun].ammo_max;
+    object.weap_ammo[1] = (float) asset->jet_data[selected->player_jet].msl_mult * asset->msl_data[selected->player_msl].ammo_max;
+    object.curr.x = -1;
+    object.curr.y = -1;
+    object.alter.acceleratable = 1;
+    object.alter.rotatable = 1;
+    object.ability = nullptr;
+    object.isBot = bot;
+
+
+    for(int i =0; i < 3; i++) object.will_shoot[i] = 0;
+    for(int i =0; i < 3; i++) object.weap_delay[i] = 0;
+
+    for(int i = 0; i< ENUM_JET_STATUS_FIN;i++) object.status[i] = 0;
+
+
+    return object;
+}
+
+void enemy_spawn(struct LevelInst * level, struct asset_data * asset)
+{
+int enemy_amount = 0;
+
+float map_width = asset->lvl_data[level->level_name].map_width;
+float map_height = asset->lvl_data[level->level_name].map_height;
+
+for(int i = 0; i<ENUM_BOSS_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level->level_name].enemy_quality[i];
+float x = (float) map_width*0.7, y = (float) map_height/(enemy_amount+1);
+
+struct selection templat[ENUM_BOSS_TYPE_FIN] = {
+{.player_jet = MIG21,.player_gun=SHVAK,.player_msl=IR},
+{.player_jet = F4, .player_gun = GATLING, .player_msl = RAD},
+{.player_jet = F104, .player_gun = GATLING, .player_msl = IR},
+{.player_jet = HARRIER, .player_gun = ADEN, .player_msl = IR},
+{.player_jet = MIG29, .player_gun = SHVAK, .player_msl = RAD},
+{.player_jet = SR91, .player_gun = GATLING, .player_msl = RAD}
+};
+
+
+
+
+
+std::copy(asset->lvl_data[level->level_name].enemy_quality,asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
+
+
+for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++)
+{
+    for(int q = 0; q< level->enemy_quality[i]; q++)
+    {
+        JetInst temp = jet_spawn(asset,templat+i,1);
+        temp.curr.x = x + rand()%20-10;
+        temp.curr.y = y;
+        level->jet_q.push_back(temp);
+        y += (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
+
+    }
+}
+for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++)
+{
+    for(int q = 0; q< level->enemy_quality[i]; q++)
+    {
+        JetInst temp = jet_spawn(asset,templat+i,1);
+        temp.curr.x = x + (float)rand()/RAND_MAX*0.4*map_width - 0.2*map_width;
+        temp.curr.y = map_height*(float)rand()/RAND_MAX;
+        temp.ability = new struct Ability[ENUM_BOSS_ABILITY_FIN];
+        for(int m = 0 ; m< ENUM_BOSS_ABILITY_FIN; m++)
+        {
+            temp.ability[m].cooldown = 0;
+            temp.ability[m].duration = 0;
+        }
+
+        level->jet_q.push_back(temp);
+
+    }
+
+
 }
 
 
+
+
+
 }
-}
 
 
 
-/*
-###############################
+
+/*#############################
 ###############################
 ######## JET INITIALIZE #######
 ###############################
-###############################
-*/
+#############################*/
+
 void bullet_init(struct asset_data * lvl)
 {
     for(int i = 0; i< ENUM_BULLET_TYPE_FIN;i++)
@@ -305,7 +445,7 @@ for(int i =0; i< ENUM_MSL_TYPE_FIN; i++)
 
 void jet_init(struct asset_data * data)
 {
-    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++)
+    for(int i = 0; i< ENUM_BOSS_TYPE_FIN; i++)
     {
         switch(i)
         {
@@ -323,6 +463,7 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].gun_mult = 0.8;
             data->jet_data[i].msl_mult = 1;
             data->jet_data[i].spc_mult = 0.9;
+            data->jet_data[i].isBoss = 0;
             break;
             }
             case F4:
@@ -339,6 +480,7 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].gun_mult = 1.1;
             data->jet_data[i].msl_mult = 1.1;
             data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].isBoss = 0;
             break;
             }
             case F104:
@@ -355,6 +497,7 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].gun_mult = 1;
             data->jet_data[i].msl_mult = 0.8;
             data->jet_data[i].spc_mult = 0.8;
+            data->jet_data[i].isBoss = 0;
             break;
             }
             case HARRIER:
@@ -371,88 +514,116 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].gun_mult = 1.1;
             data->jet_data[i].msl_mult = 1.4;
             data->jet_data[i].spc_mult = 1.4;
+            data->jet_data[i].isBoss = 0;
             break;
             }
+            case MIG29:
+            {
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.026;
+            data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.speed_limit[0] = 2.2;
+            data->jet_data[i].default_speed = 2.6;
+            data->jet_data[i].alter_limit.speed_limit[1] = 3.4;
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0125;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0095;
+            data->jet_data[i].hp = 250;
+            data->jet_data[i].hitbox = 6;
+            data->jet_data[i].gun_mult = 0.8;
+            data->jet_data[i].msl_mult = 1.1;
+            data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].isBoss = 1;
+            break;
+            }
+            case SR91:
+            {
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
+            data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.speed_limit[0] = 3.0;
+            data->jet_data[i].default_speed = 3.6;
+            data->jet_data[i].alter_limit.speed_limit[1] = 4.4;
+            data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
+            data->jet_data[i].hp = 200;
+            data->jet_data[i].hitbox = 6;
+            data->jet_data[i].gun_mult = 1.1;
+            data->jet_data[i].msl_mult = 1.1;
+            data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].isBoss = 1;
+            break;
+            }
+
 
         }
 
     }
 }
 
-
-
-
-
-
-
-JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot)
+void boss_init(struct asset_data * data)
 {
-    JetInst object;
-    object.item = *selected;
-    object.hp = asset->jet_data[selected->player_jet].hp;
-    if(bot)
+    for(int i = 0; i< ENUM_BOSS_TYPE_FIN-ENUM_JET_TYPE_FIN; i++)
     {
-        if(rand()%2) object.curr.turn_angle = (float)rand()/(RAND_MAX) *1.8 + 1;
-        else object.curr.turn_angle = (float)rand()/(RAND_MAX) *(-1.8) - 1.2;
-       
+        switch(i)
+        {
+            case MIG29 - ENUM_JET_TYPE_FIN:
+            {
+            data->boss_data[i].ability[BOSS_ABILITY::RAND_POS] = 0;
+            data->boss_data[i].ability[BOSS_ABILITY::DASH] = 1;
+            data->boss_data[i].ability[BOSS_ABILITY::CMEASURE] = 1;
+            }
+            break;
+            case SR91 - ENUM_JET_TYPE_FIN:
+            {
+            data->boss_data[i].ability[BOSS_ABILITY::RAND_POS] = 1;
+            data->boss_data[i].ability[BOSS_ABILITY::DASH] = 1;
+            data->boss_data[i].ability[BOSS_ABILITY::CMEASURE] = 0;
+            }
+            break;
+        }
     }
-    else
-    {
-        object.curr.turn_angle = 0.0;
-
-    }
-    object.target_angle = object.curr.turn_angle;
-    object.alter.speed_mode = STANDARD;
-    object.alter.turn_speed = 0.;
-    object.curr.speed = asset->jet_data[selected->player_jet].default_speed;
-    object.at_work = 0;
-    object.weap_ammo[0] = (float) asset->jet_data[selected->player_jet].gun_mult * asset->gun_data[selected->player_gun].ammo_max;
-    object.weap_ammo[1] = (float) asset->jet_data[selected->player_jet].msl_mult * asset->msl_data[selected->player_msl].ammo_max;
-    object.curr.x = -1;
-    object.curr.y = -1;
-
-    for(int i =0; i < 3; i++) object.will_shoot[i] = 0;
-    for(int i =0; i < 3; i++) object.weap_delay[i] = 0;
-
-
-    return object;
+    
 }
 
-void enemy_spawn(struct LevelInst * level, struct asset_data * asset)
+void abl_init(struct asset_data * data)
 {
-int enemy_amount = 0;
-
-for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level->level_name].enemy_quality[i];
-float x = (float) asset->lvl_data[level->level_name].map_width*0.7, y = (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
-
-struct selection templat[ENUM_JET_TYPE_FIN] = {
-{.player_jet = MIG21,.player_gun=SHVAK,.player_msl=IR},
-{.player_jet = F4, .player_gun = GATLING, .player_msl = RAD},
-{.player_jet = F104, .player_gun = GATLING, .player_msl = IR},
-{.player_jet = HARRIER, .player_gun = ADEN, .player_msl = IR}
-};
-
-
-
-
-
-std::copy(asset->lvl_data[level->level_name].enemy_quality,asset->lvl_data[level->level_name].enemy_quality+ENUM_JET_TYPE_FIN,level->enemy_quality);
-
-
-for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++)
-{
-    for(int q = 0; q< level->enemy_quality[i]; q++)
+    for(int i = 0; i< ENUM_BOSS_ABILITY_FIN; i++)
     {
-        JetInst temp = jet_spawn(asset,templat+i,1);
-        temp.curr.x = x + rand()%20-10;
-        temp.curr.y = y;
-        level->jet_q.push_back(temp);
-        y += (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
-
+        switch(i)
+        {
+            case BOSS_ABILITY::RAND_POS:
+            {
+            data->abl_data[i].cooldown = 60 * 4;
+            data->abl_data[i].duration = 1;
+            }
+            break;
+            case BOSS_ABILITY::DASH:
+            {
+            data->abl_data[i].cooldown = 60 * 3;
+            data->abl_data[i].duration = 20;
+            }
+            break;
+            case BOSS_ABILITY::CMEASURE:
+            {
+            data->abl_data[i].cooldown = 60 * 6;
+            data->abl_data[i].duration = 60;
+            }
+            break;
+        }
     }
+
+
+
+
+
 }
 
 
 
-}
+
+
+
+
+
+
+
+
 

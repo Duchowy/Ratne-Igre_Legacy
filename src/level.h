@@ -7,7 +7,7 @@
 #define LEVEL_H
 #include "common.h"
 struct Level{
-unsigned short enemy_quality[ENUM_JET_TYPE_FIN];
+unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
 unsigned int map_width;
 unsigned int map_height;
 short next_level;
@@ -15,7 +15,7 @@ short next_level;
 
 struct LevelInst{
 unsigned short level_name;
-unsigned short enemy_quality[ENUM_JET_TYPE_FIN];
+unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
 std::vector<BulInst> bullet_q;
 std::vector<JetInst> jet_q;
 std::vector<MslInst> msl_q;

@@ -86,7 +86,7 @@ switch(number)
     break;
     case 3: //level
     {
-        if(decision > 0 && choice->selection < ENUM_BKGR_TYPE_FIN-1) choice->selection++;
+        if(decision > 0 && choice->selection < ENUM_LVL_TYPE_FIN-1) choice->selection++;
         if(decision < 0 && choice->selection > 0) choice->selection--;
     }
     break;
@@ -213,8 +213,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->msl_q.clear();
 
 
-
-    std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BKGR_TYPE_FIN,level->enemy_quality);
+    std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
     level->player = jet_spawn(asset,&level->player.item,0);
     level->jet_q.push_back(level->player);
     level->jet_q.front().curr.x = window_width/2;
@@ -239,8 +238,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
     {
         case BERLIN:
         {
-        int amnt[] = {4,6,1,0};
-        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        int amnt[] = {4,6,1,0,0,0};
+        std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
@@ -248,22 +247,37 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         }
         case PFERD:
         {
-        int amnt[] = {2,0,0,2};
-        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        int amnt[] = {2,0,0,2,0,0};
+        std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].next_level = UKRAINE;
         break;
         }
         case INDIA:
         {
-        int amnt[] = {8,6,0,1};
-        std::copy(amnt,amnt+ENUM_JET_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        int amnt[] = {8,6,0,1,0,0};
+        std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         break;
         }
+        case UKRAINE:
+        {
+        int amnt[] = {3,0,0,0,2,0};
+        std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        break;
+
+
+
+
+        }
+
+
     }
 }
 

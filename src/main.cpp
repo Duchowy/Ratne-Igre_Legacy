@@ -34,6 +34,8 @@ asset_data assets;
 texture_init(&assets,1);
 struct LevelInst lvl = {.level_name = ENUM_BKGR_TYPE_FIN};
 jet_init(&assets);
+abl_init(&assets);
+boss_init(&assets);
 gun_init(&assets);
 msl_init(&assets);
 level_init(&assets);
@@ -80,6 +82,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->bkgr_texture[BERLIN] = al_load_bitmap("texture/bkgr/berlin.jpg");
     lvl->bkgr_texture[INDIA] = al_load_bitmap("texture/bkgr/india.jpg");
     lvl->bkgr_texture[PFERD] = al_load_bitmap("texture/bkgr/pferd.png");
+    lvl->bkgr_texture[UKRAINE] = al_load_bitmap("texture/bkgr/ukraine.jpg");
         //bullet
     lvl->bullet_texture[SLUG][0] = al_load_bitmap("texture/bullet/slug.png");
     lvl->bullet_texture[SLUG][1] = al_load_bitmap("texture/bullet/slug_flare.png");
@@ -88,6 +91,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->jet_texture[F4] = al_load_bitmap("texture/jet/f4.png");
     lvl->jet_texture[F104] = al_load_bitmap("texture/jet/f104.png");
     lvl->jet_texture[HARRIER] = al_load_bitmap("texture/jet/harrier.png");
+    lvl->jet_texture[MIG29] = al_load_bitmap("texture/jet/mig29.png");
         //msl
     lvl->msl_texture[IR] = al_load_bitmap("texture/missile/infrared.png");
     lvl->msl_texture[RAD] = al_load_bitmap("texture/missile/radar.png");
@@ -97,12 +101,14 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->bkgr_texture[BERLIN]);
         al_destroy_bitmap(lvl->bkgr_texture[INDIA]);
         al_destroy_bitmap(lvl->bkgr_texture[PFERD]);
+        al_destroy_bitmap(lvl->bkgr_texture[UKRAINE]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][0]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][1]);
         al_destroy_bitmap(lvl->jet_texture[MIG21]);
         al_destroy_bitmap(lvl->jet_texture[F4]);
         al_destroy_bitmap(lvl->jet_texture[F104]);
         al_destroy_bitmap(lvl->jet_texture[HARRIER]);
+        al_destroy_bitmap(lvl->jet_texture[MIG29]);
         al_destroy_bitmap(lvl->msl_texture[IR]);
         al_destroy_bitmap(lvl->msl_texture[RAD]);
 

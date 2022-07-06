@@ -117,6 +117,29 @@ void texture_init(struct asset_data * lvl, bool load)
 
 }
 
+void texture_init(struct asset_data * asset)
+{
+    for(int i = 0; i< ENUM_PRT_TYPE_FIN;i++)
+    {
+        switch(i)
+        {
+            case FLARE:
+            {
+                asset->prt_data[i].decay = 90;
+            break;
+            }
+        }
+
+
+    }
+
+
+
+}
+
+
+
+
 void load_settings(struct asset_data * master)
 {
 

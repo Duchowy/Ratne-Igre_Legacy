@@ -211,6 +211,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->jet_q.clear();
     level->bullet_q.clear();
     level->msl_q.clear();
+    level->prt_q.clear();
 
 
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);

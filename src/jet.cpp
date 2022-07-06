@@ -11,6 +11,8 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
     {
         
         MslInst ap;
+        ap.alter.acceleratable = 1;
+        ap.alter.rotatable = 1;
         ap.type = object->item.player_msl;
         ap.curr.speed = object->curr.speed;
         ap.curr.turn_angle = ap.target_angle = object->curr.turn_angle;
@@ -188,6 +190,7 @@ switch(object->mode)
 
 }
 
+//all boss abilities used & standard bot actions
 void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 {
 std::vector<JetInst>::iterator player = input_vec.begin();
@@ -200,15 +203,27 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     {
         triggered = 1;
         if(
+            limit->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::DASH] &&
+            object->ability[BOSS_ABILITY::DASH].cooldown == 0 &&
             (
             (dist > 350 && fabs(rad_distance(object,player)) < PI/6) || (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
             )
-         && object->ability[BOSS_ABILITY::DASH].cooldown == 0 
         )
         {
             object->ability[BOSS_ABILITY::DASH].cooldown = limit->abl_data[BOSS_ABILITY::DASH].cooldown;
             object->ability[BOSS_ABILITY::DASH].duration = limit->abl_data[BOSS_ABILITY::DASH].duration;
         };
+
+        if(
+            limit->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
+            object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
+            (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
+        )
+        {
+            object->ability[BOSS_ABILITY::RAND_POS].cooldown = limit->abl_data[BOSS_ABILITY::RAND_POS].cooldown;
+            object->ability[BOSS_ABILITY::RAND_POS].duration = limit->abl_data[BOSS_ABILITY::RAND_POS].duration;
+        };
+
 
 
 
@@ -591,7 +606,7 @@ void abl_init(struct asset_data * data)
         {
             case BOSS_ABILITY::RAND_POS:
             {
-            data->abl_data[i].cooldown = 60 * 4;
+            data->abl_data[i].cooldown = 60 * 12;
             data->abl_data[i].duration = 1;
             }
             break;

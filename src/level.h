@@ -19,9 +19,29 @@ unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
 std::vector<BulInst> bullet_q;
 std::vector<JetInst> jet_q;
 std::vector<MslInst> msl_q;
+std::vector<ParticleInst> prt_q;
 float scale;
 
 struct JetInst player;
+};
+
+
+struct Particle
+{
+    int decay;
+};
+
+
+
+
+
+struct ParticleInst{
+    unsigned int type;
+    ALLEGRO_COLOR color;
+    struct state curr;
+    struct state_change alter;
+    int decay;
+    bool isDecaying;
 };
 
 

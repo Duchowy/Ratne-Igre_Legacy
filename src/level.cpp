@@ -48,6 +48,15 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
 
 }
 
+float angle_addition(float object, float addition)
+{
+    object += addition;
+        if(object > PI) object = object - 2*PI;
+        if(object < -PI) object = object + 2*PI;
+return object;
+}
+
+
 float angle_difference(float current, float target)
 {
 float diff = current-target;
@@ -62,7 +71,7 @@ float new_angle = atan2(( target->curr.y - current->curr.y) ,(target->curr.x - c
 return angle_difference(current->curr.turn_angle,new_angle);
 }
 
-float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target)
+float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target) //to be changed to use curr struct
 {
     return sqrt( pow( target->curr.x - current->curr.x ,2) +  pow(  target->curr.y - current->curr.y ,2));
 }
@@ -76,7 +85,6 @@ float distance(std::vector<MslInst>::iterator shell, std::vector<JetInst>::itera
 void collision(struct LevelInst * input, struct asset_data * asset)
 {
 
-//asset->lvl_data[input->level_name]
 //bullet vs jet
 
 for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != input->bullet_q.end(); shell++)
@@ -101,6 +109,7 @@ for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != inp
                         input->enemy_quality[target->item.player_jet]--;
                         if(target->ability) delete target->ability;
                         input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+                        target--;
                     }
                      
                 }
@@ -129,24 +138,32 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
 	{
 		if( shell->decay + 5 <= asset->msl_data[shell->type].decay  && distance(shell,target) < asset->jet_data[target->item.player_jet].hitbox + asset->msl_data[shell->type].radius) //target hit
 		{
-		activated = 1;
-        target->hp -= asset->msl_data[shell->type].damage;
-        
+            if(shell->type != RAD || (shell->type == RAD && shell->isBotLaunched != target->isBot)) //self-enemy check
+            {  
+                activated = 1;
 
-
-        if(target->hp < 0)
-        {
-            if(target != input->jet_q.begin())
-            {
-                input->enemy_quality[target->item.player_jet]--;
-                if(target->ability) delete target->ability;
-                input->jet_q.erase(target); //to be moved somewhere else, destruction animation
             }
-             
-        }
-		break;
+            if(activated)
+            {
+                target->hp -= asset->msl_data[shell->type].damage;
+                if(target->hp < 0)
+                {
+                    if(target != input->jet_q.begin())
+                    {
+                        input->enemy_quality[target->item.player_jet]--;
+                        if(target->ability) delete target->ability;
+                        input->jet_q.erase(target); //to be moved somewhere else, destruction animation
+                        target--;
+                    }
+                    
+                }
+
+
+
+            }
 		}
 	}
+
 	if(!activated)
 	{
         shell->decay--;
@@ -333,6 +350,74 @@ int alive_enemy_jets(LevelInst * lvl)
     return sum;
 }
 
+void countermeasure(std::vector<JetInst>::iterator object, asset_data * asset, LevelInst * lvl) //to re-think the if statements (may be good, just think about it)
+{
+    bool activated = 0;
+if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
+{
+    for(std::vector<MslInst>::iterator shell = lvl->msl_q.begin(); shell != lvl->msl_q.end(); shell++)
+    {
+        if(distance(shell,object) < 350 && shell->isBotLaunched != object->isBot)
+        {
+            activated = 1;
+            if(!shell->status[MSL_STATUS::CONTROLLED])
+            {
+                shell->status[MSL_STATUS::CONTROLLED] = 1;
+                shell->target_angle = (float) rand()/RAND_MAX *2*PI - PI;
+            }
+            
+        }
+    }
+
+if(particlesEnabled && object->ability[CMEASURE].duration %10)
+{
+ParticleInst temp1, temp2;
+temp1.decay = temp2.decay = asset->prt_data[FLARE].decay;
+temp1.curr.turn_angle = angle_addition(object->curr.turn_angle,PI/2);
+temp2.curr.turn_angle = angle_addition(object->curr.turn_angle,-PI/2);
+temp1.alter.rotatable = temp2.alter.rotatable = 1;
+temp1.alter.acceleratable = temp2.alter.acceleratable = 0;
+temp1.alter.turn_speed =  0.01;
+temp2.alter.turn_speed = -temp1.alter.turn_speed;
+temp1.curr.speed = temp2.curr.speed =  0.2;
+temp1.isDecaying = temp2.isDecaying = 1;
+move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 4/temp1.alter.turn_speed);
+move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 4/temp2.alter.turn_speed);
+
+lvl->prt_q.push_back(temp1);
+lvl->prt_q.push_back(temp2);
+
+}
+
+
+}
+    
+if(activated && !object->ability[CMEASURE].cooldown)
+{
+    object->ability[CMEASURE].cooldown = asset->abl_data[CMEASURE].cooldown;
+    object->ability[CMEASURE].duration = asset->abl_data[CMEASURE].duration;
+}
+
+
+}
+
+
+void boss_ability_use(asset_data * asset, LevelInst * level)
+{
+for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
+{
+    if(asset->jet_data[object->item.player_jet].isBoss)
+    {
+        countermeasure(object,asset,level);
+
+    }
+
+}
+
+
+}
+
+
 
 
 
@@ -407,6 +492,7 @@ while(!kill)
 //decisions
         decision(lvl->jet_q,assets);
         action(lvl,assets);
+        boss_ability_use(assets,lvl);
         target(lvl,assets);
 //transformation
         transform(lvl,assets);

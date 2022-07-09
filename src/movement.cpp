@@ -12,8 +12,7 @@ std::vector<JetInst>::iterator player = lvl->jet_q.begin();
 int map_width = asset->lvl_data[lvl->level_name].map_width;
 int map_height = asset->lvl_data[lvl->level_name].map_height;
 
-target(object,player);
-object->curr.turn_angle = object->target_angle;
+
 
 if(rand()%2) //x is edge
 {
@@ -40,9 +39,12 @@ else //y is edge
     }
 
 }
-
+target(object,player);
+object->curr.turn_angle = object->target_angle;
 
 }
+
+
 
 }
 
@@ -65,10 +67,10 @@ void dash(std::vector<JetInst>::iterator object,unsigned int map_width, unsigned
 
 void move(struct state * pos, unsigned int map_width, unsigned int map_height, int num)
 {
-        pos->x += cos(pos->turn_angle)*pos->speed;
+        pos->x += cos(pos->turn_angle)*pos->speed*num;
         if(pos->x < 0) pos->x = 0;
         if(pos->x > map_width) pos->x = map_width;
-        pos->y += sin(pos->turn_angle)*pos->speed;
+        pos->y += sin(pos->turn_angle)*pos->speed*num;
         if(pos->y < 0) pos->y = 0;
         if(pos->y > map_height) pos->y = map_height;
 }
@@ -100,41 +102,51 @@ if(alt->acceleratable)
 //rotation section
 if(alt->rotatable)
 {
-    float angle_diff = angle_difference(pos->turn_angle,target_angle);
-    float road = 0.5 * pow(alt->turn_speed,2) / limit->turn_rate; 
 
-    if(fabs(angle_diff)>road) //outer scope
-    { //rough targeting, altering radial velocity
-        if(angle_diff >= 0) 
-        {
-            if(alt->turn_speed > -limit->alter.turn_speed) alt->turn_speed -= limit->turn_rate;
+    if(limit)
+    {
+            
+        float angle_diff = angle_difference(pos->turn_angle,target_angle);
+        float road = 0.5 * pow(alt->turn_speed,2) / limit->turn_rate; 
+
+        if(fabs(angle_diff)>road) //outer scope
+        { //rough targeting, altering radial velocity
+            if(angle_diff >= 0) 
+            {
+                if(alt->turn_speed > -limit->alter.turn_speed) alt->turn_speed -= limit->turn_rate;
+            }
+            else if(alt->turn_speed < limit->alter.turn_speed) alt->turn_speed += limit->turn_rate;
+            //angle alteration part
+            pos->turn_angle = angle_addition(pos->turn_angle,alt->turn_speed);
         }
-        else if(alt->turn_speed < limit->alter.turn_speed) alt->turn_speed += limit->turn_rate;
-        //angle alteration part
-        pos->turn_angle += alt->turn_speed;
-        if(pos->turn_angle > PI) pos->turn_angle = pos->turn_angle - 2*PI;
-        if(pos->turn_angle < -PI) pos->turn_angle = pos->turn_angle + 2*PI;
-    }
-    else //inner scope
-    { //slowing down
-     if(fabs(angle_diff)>fabs(alt->turn_speed))
-     {
-         if(angle_diff >= 0)
-                {
-               if(alt->turn_speed < limit->alter.turn_speed) alt->turn_speed += limit->turn_rate;
-                }
-        else if (alt->turn_speed > -limit->alter.turn_speed) alt->turn_speed -= limit->turn_rate;
-            pos->turn_angle += alt->turn_speed;
-            if(pos->turn_angle > PI) pos->turn_angle = pos->turn_angle - 2*PI;
-            if(pos->turn_angle < -PI) pos->turn_angle = pos->turn_angle + 2*PI;
-      }
-      else //recently added
-      {
-      pos->turn_angle = target_angle;
-      alt->turn_speed = 0;
-      }
-    }
+        else //inner scope
+        { //slowing down
+        if(fabs(angle_diff)>fabs(alt->turn_speed))
+        {
+            if(angle_diff >= 0)
+                    {
+                if(alt->turn_speed < limit->alter.turn_speed) alt->turn_speed += limit->turn_rate;
+                    }
+            else if (alt->turn_speed > -limit->alter.turn_speed) alt->turn_speed -= limit->turn_rate;
+                
+                
+                pos->turn_angle = angle_addition(pos->turn_angle,alt->turn_speed);
+        }
+        else //recently added
+        {
+        pos->turn_angle = target_angle;
+        alt->turn_speed = 0;
+        }
+        }
 
+
+
+    }else
+    {
+
+        pos->turn_angle = angle_addition(pos->turn_angle,alt->turn_speed);
+
+    }
 
 
 
@@ -166,6 +178,11 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     for(std::vector<BulInst>::iterator object = data->bullet_q.begin(); object != data->bullet_q.end(); object++)
     {
         move(&object->curr, asset->lvl_data[data->level_name].map_width, asset->lvl_data[data->level_name].map_height,1);
+    }
+    for(std::vector<ParticleInst>::iterator object = data->prt_q.begin(); object != data->prt_q.end(); object++)
+    {
+        move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
+        advance(&object->curr,&object->alter,NULL,0);
     }
 
 

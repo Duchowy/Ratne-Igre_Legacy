@@ -48,6 +48,23 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
 
 }
 
+void decay(struct LevelInst * level, struct asset_data * asset)
+{
+    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
+    {
+        object->decay--;
+        if(!object->decay)
+        {
+            level->prt_q.erase(object);
+            object--;
+        }
+
+    }
+
+}
+
+
+
 float angle_addition(float object, float addition)
 {
     object += addition;
@@ -240,9 +257,9 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
 
 
 
-
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 { //bullet section
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+    
     for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++)
     {
         
@@ -260,8 +277,25 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
         asset->bul_data[object->type].height,asset->bul_data[object->type].width,object->curr.turn_angle,0);
         
     }
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    
 }
+
+//particle section
+{
+    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
+    {
+        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[FLARE].texture,al_map_rgba(255,255,255,255*object->decay / asset->prt_data[object->type].decay),23,23,
+        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,1,1,
+        object->curr.turn_angle,object->flip_img
+        );
+    }
+
+
+
+
+}
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+
 
 }
 
@@ -345,7 +379,7 @@ al_set_mouse_z(0); //ticker bound
 int alive_enemy_jets(LevelInst * lvl)
 {
     int sum = 0;
-    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++) sum+= lvl->enemy_quality[i];
+    for(int i = 0; i< ENUM_BOSS_TYPE_FIN; i++) sum+= lvl->enemy_quality[i];
 
     return sum;
 }
@@ -369,9 +403,10 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
         }
     }
 
-if(particlesEnabled && object->ability[CMEASURE].duration %10)
+if(activated && particlesEnabled && object->ability[CMEASURE].duration %20 == 0)
 {
 ParticleInst temp1, temp2;
+temp1.type = temp2.type = FLARE;
 temp1.decay = temp2.decay = asset->prt_data[FLARE].decay;
 temp1.curr.turn_angle = angle_addition(object->curr.turn_angle,PI/2);
 temp2.curr.turn_angle = angle_addition(object->curr.turn_angle,-PI/2);
@@ -379,10 +414,15 @@ temp1.alter.rotatable = temp2.alter.rotatable = 1;
 temp1.alter.acceleratable = temp2.alter.acceleratable = 0;
 temp1.alter.turn_speed =  0.01;
 temp2.alter.turn_speed = -temp1.alter.turn_speed;
-temp1.curr.speed = temp2.curr.speed =  0.2;
+temp1.curr.speed = temp2.curr.speed = 0.25;
+temp1.curr.x = temp2.curr.x = object->curr.x; 
+temp1.curr.y = temp2.curr.y = object->curr.y; 
+temp1.flip_img = 0;
+temp2.flip_img = ALLEGRO_FLIP_VERTICAL;
+
 temp1.isDecaying = temp2.isDecaying = 1;
-move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 4/temp1.alter.turn_speed);
-move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 4/temp2.alter.turn_speed);
+move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp1.curr.speed);
+move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp2.curr.speed);
 
 lvl->prt_q.push_back(temp1);
 lvl->prt_q.push_back(temp2);
@@ -408,8 +448,8 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != le
 {
     if(asset->jet_data[object->item.player_jet].isBoss)
     {
-        countermeasure(object,asset,level);
-
+        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[CMEASURE]) countermeasure(object,asset,level);
+        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[RAND_POS]) randomize_position(object,asset, level);
     }
 
 }
@@ -514,6 +554,7 @@ while(!kill)
         al_clear_to_color(al_map_rgb(27,27,27));
         redraw = 0;
         cooldown(lvl->jet_q);
+        decay(lvl,assets);
 
         for(int i =1; i<3; i++) lvl->jet_q.front().will_shoot[i] = 0;
 

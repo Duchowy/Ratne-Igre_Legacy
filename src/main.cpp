@@ -8,6 +8,7 @@
 bool allegro_init();
 void texture_init(struct asset_data *, bool);
 void load_settings(struct asset_data *);
+void particle_init(struct asset_data *);
 
 int main()
 {
@@ -40,6 +41,7 @@ gun_init(&assets);
 msl_init(&assets);
 level_init(&assets);
 bullet_init(&assets);
+particle_init(&assets);
 
 short state = SELECTION;
 al_start_timer(alleg5.timer);
@@ -83,6 +85,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->bkgr_texture[INDIA] = al_load_bitmap("texture/bkgr/india.jpg");
     lvl->bkgr_texture[PFERD] = al_load_bitmap("texture/bkgr/pferd.png");
     lvl->bkgr_texture[UKRAINE] = al_load_bitmap("texture/bkgr/ukraine.jpg");
+    lvl->bkgr_texture[ATLANTIC] = al_load_bitmap("texture/bkgr/atlantic.jpg");
         //bullet
     lvl->bullet_texture[SLUG][0] = al_load_bitmap("texture/bullet/slug.png");
     lvl->bullet_texture[SLUG][1] = al_load_bitmap("texture/bullet/slug_flare.png");
@@ -92,9 +95,12 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->jet_texture[F104] = al_load_bitmap("texture/jet/f104.png");
     lvl->jet_texture[HARRIER] = al_load_bitmap("texture/jet/harrier.png");
     lvl->jet_texture[MIG29] = al_load_bitmap("texture/jet/mig29.png");
+    lvl->jet_texture[SR91] = al_load_bitmap("texture/jet/sr91.png");
         //msl
     lvl->msl_texture[IR] = al_load_bitmap("texture/missile/infrared.png");
     lvl->msl_texture[RAD] = al_load_bitmap("texture/missile/radar.png");
+        //particle
+    lvl->prt_data[FLARE].texture = al_load_bitmap("texture/particle/flare.png");
     }
     else
     {
@@ -102,6 +108,7 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->bkgr_texture[INDIA]);
         al_destroy_bitmap(lvl->bkgr_texture[PFERD]);
         al_destroy_bitmap(lvl->bkgr_texture[UKRAINE]);
+        al_destroy_bitmap(lvl->bkgr_texture[ATLANTIC]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][0]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][1]);
         al_destroy_bitmap(lvl->jet_texture[MIG21]);
@@ -109,15 +116,17 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->jet_texture[F104]);
         al_destroy_bitmap(lvl->jet_texture[HARRIER]);
         al_destroy_bitmap(lvl->jet_texture[MIG29]);
+        al_destroy_bitmap(lvl->jet_texture[SR91]);
         al_destroy_bitmap(lvl->msl_texture[IR]);
         al_destroy_bitmap(lvl->msl_texture[RAD]);
+        al_destroy_bitmap(lvl->prt_data[FLARE].texture);
 
     }
 
 
 }
 
-void texture_init(struct asset_data * asset)
+void particle_init(struct asset_data * asset)
 {
     for(int i = 0; i< ENUM_PRT_TYPE_FIN;i++)
     {

@@ -243,7 +243,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].next_level = ATLANTIC;
         break;
         }
         case PFERD:
@@ -252,7 +252,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = UKRAINE;
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         break;
         }
         case INDIA:
@@ -261,7 +261,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].next_level = UKRAINE;
         break;
         }
         case UKRAINE:
@@ -272,10 +272,15 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         break;
-
-
-
-
+        }
+        case ATLANTIC:
+        {
+        int amnt[] = {0,3,3,0,0,1};
+        std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
+        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        break;
         }
 
 

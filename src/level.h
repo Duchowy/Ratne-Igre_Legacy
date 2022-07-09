@@ -13,6 +13,20 @@ unsigned int map_height;
 short next_level;
 };
 
+
+
+
+struct ParticleInst{
+    unsigned int type;
+    ALLEGRO_COLOR color;
+    struct state curr;
+    struct state_change alter;
+    int decay;
+    bool isDecaying;
+    unsigned short flip_img;
+};
+
+
 struct LevelInst{
 unsigned short level_name;
 unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
@@ -28,6 +42,7 @@ struct JetInst player;
 
 struct Particle
 {
+    ALLEGRO_BITMAP * texture;
     int decay;
 };
 
@@ -35,17 +50,10 @@ struct Particle
 
 
 
-struct ParticleInst{
-    unsigned int type;
-    ALLEGRO_COLOR color;
-    struct state curr;
-    struct state_change alter;
-    int decay;
-    bool isDecaying;
-};
 
 
 int level(allegro5_data*,asset_data*,LevelInst*);
+float angle_addition(float object, float addition);
 float angle_difference(float current, float target);
 float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
 float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);

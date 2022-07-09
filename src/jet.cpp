@@ -121,7 +121,7 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
 
 void action(struct LevelInst * level, struct asset_data * asset)
 {
-
+std::vector<JetInst>::iterator player = level->jet_q.begin();
 for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
 {
 for(int i =0; i< 3; i++) object->will_shoot[i] = 0;
@@ -151,16 +151,16 @@ switch(object->mode)
     }
     case PURSUIT:
     {
-        target(object,level->jet_q.begin());
-        if(fabs(angle_difference(object->curr.turn_angle,object->target_angle)) < asset->jet_data[object->item.player_jet].alter_limit.turn_rate) 
+        target(object,player);
+        if(fabs(rad_distance(object,player)) < asset->gun_data[object->item.player_gun].spread) 
         {
             if(asset->jet_data[object->item.player_jet].isBoss)
             {
-                if(rand()%300 == 0) object->will_shoot[1] = 1; //rocket
+                if(rand()%100 == 0 && distance(object,player) < asset->msl_data[object->item.player_msl].decay * asset->msl_data[object->item.player_msl].alter_limit.speed_limit[1] ) object->will_shoot[1] = 1; //boss launch missile
             }
             else
             {
-                if(rand()%600 == 0) object->will_shoot[1] = 1; //launch rocket
+                if(rand()%600 == 0) object->will_shoot[1] = 1; //launch missile
             }
 
             
@@ -217,7 +217,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         if(
             limit->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
             object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
-            (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
+            (dist < 350 && dist > 150 && fabs(rad_distance(object,player)) > 3*PI/5)
         )
         {
             object->ability[BOSS_ABILITY::RAND_POS].cooldown = limit->abl_data[BOSS_ABILITY::RAND_POS].cooldown;
@@ -397,7 +397,7 @@ for(int i =0; i< ENUM_GUN_TYPE_FIN; i++)
             lvl->gun_data[i].ammo_type = SLUG;
             lvl->gun_data[i].weap_delay = 8;
             lvl->gun_data[i].spread = 0.05;
-            lvl->gun_data[i].speed = 6;
+            lvl->gun_data[i].speed = 6.25;
             break;
         }
         case ADEN:
@@ -405,19 +405,19 @@ for(int i =0; i< ENUM_GUN_TYPE_FIN; i++)
             lvl->gun_data[i].damage = 35;
             lvl->gun_data[i].ammo_max = 240;
             lvl->gun_data[i].ammo_type = SLUG;
-            lvl->gun_data[i].weap_delay = 4;
+            lvl->gun_data[i].weap_delay = 5;
             lvl->gun_data[i].spread = 0.075;
-            lvl->gun_data[i].speed = 7;
+            lvl->gun_data[i].speed = 6.75;
             break;
         }
         case GATLING:
         {
-            lvl->gun_data[i].damage = 18;
+            lvl->gun_data[i].damage = 22;
             lvl->gun_data[i].ammo_max = 400;
             lvl->gun_data[i].ammo_type = SLUG;
             lvl->gun_data[i].weap_delay = 3;
-            lvl->gun_data[i].spread = 0.025;
-            lvl->gun_data[i].speed = 8;
+            lvl->gun_data[i].spread = 0.03;
+            lvl->gun_data[i].speed = 7.75;
             break;
         }
 
@@ -558,7 +558,7 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_limit[1] = 4.4;
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
-            data->jet_data[i].hp = 200;
+            data->jet_data[i].hp = 300;
             data->jet_data[i].hitbox = 6;
             data->jet_data[i].gun_mult = 1.1;
             data->jet_data[i].msl_mult = 1.1;
@@ -590,7 +590,7 @@ void boss_init(struct asset_data * data)
             {
             data->boss_data[i].ability[BOSS_ABILITY::RAND_POS] = 1;
             data->boss_data[i].ability[BOSS_ABILITY::DASH] = 1;
-            data->boss_data[i].ability[BOSS_ABILITY::CMEASURE] = 0;
+            data->boss_data[i].ability[BOSS_ABILITY::CMEASURE] = 1;
             }
             break;
         }
@@ -606,7 +606,7 @@ void abl_init(struct asset_data * data)
         {
             case BOSS_ABILITY::RAND_POS:
             {
-            data->abl_data[i].cooldown = 60 * 12;
+            data->abl_data[i].cooldown = 60 * 7;
             data->abl_data[i].duration = 1;
             }
             break;

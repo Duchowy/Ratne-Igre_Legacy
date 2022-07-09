@@ -84,7 +84,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->bkgr_texture[BERLIN] = al_load_bitmap("texture/bkgr/berlin.jpg");
     lvl->bkgr_texture[INDIA] = al_load_bitmap("texture/bkgr/india.jpg");
     lvl->bkgr_texture[PFERD] = al_load_bitmap("texture/bkgr/pferd.png");
-    lvl->bkgr_texture[UKRAINE] = al_load_bitmap("texture/bkgr/ukraine.jpg");
+    lvl->bkgr_texture[DNEPR] = al_load_bitmap("texture/bkgr/dnepr.jpg");
     lvl->bkgr_texture[ATLANTIC] = al_load_bitmap("texture/bkgr/atlantic.jpg");
         //bullet
     lvl->bullet_texture[SLUG][0] = al_load_bitmap("texture/bullet/slug.png");
@@ -107,7 +107,7 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->bkgr_texture[BERLIN]);
         al_destroy_bitmap(lvl->bkgr_texture[INDIA]);
         al_destroy_bitmap(lvl->bkgr_texture[PFERD]);
-        al_destroy_bitmap(lvl->bkgr_texture[UKRAINE]);
+        al_destroy_bitmap(lvl->bkgr_texture[DNEPR]);
         al_destroy_bitmap(lvl->bkgr_texture[ATLANTIC]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][0]);
         al_destroy_bitmap(lvl->bullet_texture[SLUG][1]);

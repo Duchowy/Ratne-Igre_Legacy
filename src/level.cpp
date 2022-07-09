@@ -284,10 +284,17 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 {
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
-        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[FLARE].texture,al_map_rgba(255,255,255,255*object->decay / asset->prt_data[object->type].decay),23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,1,1,
+        if(object->isDecaying)
+        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,al_map_rgba(255,255,255,255*object->decay / asset->prt_data[object->type].decay),23,23,
+        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
         object->curr.turn_angle,object->flip_img
         );
+        else
+        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,object->color,23,23,
+        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
+        object->curr.turn_angle,object->flip_img
+        );
+
     }
 
 
@@ -403,41 +410,41 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
         }
     }
 
-if(activated && particlesEnabled && object->ability[CMEASURE].duration %20 == 0)
-{
-ParticleInst temp1, temp2;
-temp1.type = temp2.type = FLARE;
-temp1.decay = temp2.decay = asset->prt_data[FLARE].decay;
-temp1.curr.turn_angle = angle_addition(object->curr.turn_angle,PI/2);
-temp2.curr.turn_angle = angle_addition(object->curr.turn_angle,-PI/2);
-temp1.alter.rotatable = temp2.alter.rotatable = 1;
-temp1.alter.acceleratable = temp2.alter.acceleratable = 0;
-temp1.alter.turn_speed =  0.01;
-temp2.alter.turn_speed = -temp1.alter.turn_speed;
-temp1.curr.speed = temp2.curr.speed = 0.25;
-temp1.curr.x = temp2.curr.x = object->curr.x; 
-temp1.curr.y = temp2.curr.y = object->curr.y; 
-temp1.flip_img = 0;
-temp2.flip_img = ALLEGRO_FLIP_VERTICAL;
+    if(activated && !object->ability[CMEASURE].cooldown)
+    {
+        object->ability[CMEASURE].cooldown = asset->abl_data[CMEASURE].cooldown;
+        object->ability[CMEASURE].duration = asset->abl_data[CMEASURE].duration;
+    }
 
-temp1.isDecaying = temp2.isDecaying = 1;
-move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp1.curr.speed);
-move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp2.curr.speed);
+    if(particlesEnabled && object->ability[CMEASURE].duration && object->ability[CMEASURE].duration %20 == 0)
+    {
+    ParticleInst temp1, temp2;
+    temp1.type = temp2.type = FLARE;
+    temp1.decay = temp2.decay = asset->prt_data[FLARE].decay;
+    temp1.curr.turn_angle = angle_addition(object->curr.turn_angle,PI/2);
+    temp2.curr.turn_angle = angle_addition(object->curr.turn_angle,-PI/2);
+    temp1.alter.rotatable = temp2.alter.rotatable = 1;
+    temp1.alter.acceleratable = temp2.alter.acceleratable = 0;
+    temp1.alter.turn_speed =  0.01;
+    temp2.alter.turn_speed = -temp1.alter.turn_speed;
+    temp1.curr.speed = temp2.curr.speed = 0.25;
+    temp1.curr.x = temp2.curr.x = object->curr.x; 
+    temp1.curr.y = temp2.curr.y = object->curr.y; 
+    temp1.flip_img = 0;
+    temp2.flip_img = ALLEGRO_FLIP_VERTICAL;
+    temp1.scale_x = temp2.scale_x = temp1.scale_y = temp2.scale_y = 1;
+    temp1.isDecaying = temp2.isDecaying = 1;
+    move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp1.curr.speed);
+    move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp2.curr.speed);
 
-lvl->prt_q.push_back(temp1);
-lvl->prt_q.push_back(temp2);
+    lvl->prt_q.push_back(temp1);
+    lvl->prt_q.push_back(temp2);
 
-}
+    }
 
 
 }
     
-if(activated && !object->ability[CMEASURE].cooldown)
-{
-    object->ability[CMEASURE].cooldown = asset->abl_data[CMEASURE].cooldown;
-    object->ability[CMEASURE].duration = asset->abl_data[CMEASURE].duration;
-}
-
 
 }
 
@@ -448,8 +455,9 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != le
 {
     if(asset->jet_data[object->item.player_jet].isBoss)
     {
-        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[CMEASURE]) countermeasure(object,asset,level);
         if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[RAND_POS]) randomize_position(object,asset, level);
+        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[DASH]) dash(object,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height);
+        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[CMEASURE]) countermeasure(object,asset,level);
     }
 
 }
@@ -548,7 +556,7 @@ while(!kill)
         draw(lvl,lvl->jet_q.begin(),assets);
         draw_ui(lvl,assets,alleg5->font);
 //debug
-        debug_data(lvl,assets,alleg5->font);
+        //debug_data(lvl,assets,alleg5->font);
         
         al_flip_display();
         al_clear_to_color(al_map_rgb(27,27,27));

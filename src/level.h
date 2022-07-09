@@ -20,6 +20,8 @@ struct ParticleInst{
     unsigned int type;
     ALLEGRO_COLOR color;
     struct state curr;
+    float scale_x;
+    float scale_y;
     struct state_change alter;
     int decay;
     bool isDecaying;

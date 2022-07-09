@@ -54,12 +54,11 @@ object->curr.turn_angle = object->target_angle;
 
 void dash(std::vector<JetInst>::iterator object,unsigned int map_width, unsigned int map_height)
 {
-        object->curr.x += cos(object->curr.turn_angle)*10;
-        if(object->curr.x < 0) object->curr.x = 0;
-        if(object->curr.x > map_width) object->curr.x = map_width;
-        object->curr.y += sin(object->curr.turn_angle)*10;
-        if(object->curr.y < 0) object->curr.y = 0;
-        if(object->curr.y > map_height) object->curr.y = map_height;
+    if(object->ability[DASH].duration)
+    {
+        move(&object->curr,map_width,map_height,10/object->curr.speed);
+    }
+        
 }
 
 
@@ -164,8 +163,6 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     #pragma omp parallel for
     for(std::vector<JetInst>::iterator object = data->jet_q.begin(); object != data->jet_q.end(); object++)
     {
-        if(asset->jet_data[object->item.player_jet].isBoss && object->ability[BOSS_ABILITY::DASH].duration) dash(object,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height);
-
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
         advance(&object->curr,&object->alter, &asset->jet_data[object->item.player_jet].alter_limit, object->target_angle);
     }
@@ -179,6 +176,7 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     {
         move(&object->curr, asset->lvl_data[data->level_name].map_width, asset->lvl_data[data->level_name].map_height,1);
     }
+    #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = data->prt_q.begin(); object != data->prt_q.end(); object++)
     {
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);

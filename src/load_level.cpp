@@ -261,10 +261,10 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = UKRAINE;
+        asset->lvl_data[i].next_level = DNEPR;
         break;
         }
-        case UKRAINE:
+        case DNEPR:
         {
         int amnt[] = {3,0,0,0,2,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);

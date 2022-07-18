@@ -194,6 +194,7 @@ switch(object->mode)
 void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 {
 std::vector<JetInst>::iterator player = input_vec.begin();
+#pragma omp parallel for
 for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
 {
     float dist = distance(object,player);

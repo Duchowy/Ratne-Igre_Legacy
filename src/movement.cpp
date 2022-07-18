@@ -172,6 +172,7 @@ void transform(struct LevelInst * data, struct asset_data * asset)
         advance(&object->curr,&object->alter,&asset->msl_data[object->type].alter_limit,object->target_angle);
 
     }
+    #pragma omp parallel for
     for(std::vector<BulInst>::iterator object = data->bullet_q.begin(); object != data->bullet_q.end(); object++)
     {
         move(&object->curr, asset->lvl_data[data->level_name].map_width, asset->lvl_data[data->level_name].map_height,1);

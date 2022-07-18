@@ -227,16 +227,16 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
     al_draw_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],23,23,
     x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
     al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-    if(asset->jet_data[object->item.player_jet].isBoss) 
-    {
-        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
-        al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
-    }
-    else 
-    {
-        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-        al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
-    }
+        if(asset->jet_data[object->item.player_jet].isBoss) 
+        {
+            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
+            al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+        }
+        else 
+        {
+            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
+            al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+        }
     }
     
 
@@ -362,9 +362,9 @@ al_map_rgb(240,230,140),1);
             ALLEGRO_COLOR indicator;
             if(distance(player,object) < 800) indicator = al_map_rgb(240,240,0);
             else indicator = al_map_rgb(0,240,0);
-            al_draw_line(window_width/2 + 12*cos(rad_pointer),window_height/2 + 12*sin(rad_pointer),
+            al_draw_line(window_width/2 + 14*cos(rad_pointer),window_height/2 + 14*sin(rad_pointer),
             window_width/2 + 28*cos(rad_pointer),window_height/2 + 28*sin(rad_pointer),
-            indicator,0.6);
+            indicator,0.8);
         }
         
 
@@ -529,6 +529,7 @@ while(!kill)
     }
     if(redraw && al_is_event_queue_empty(alleg5->queue))
     {
+        
         { //player actions
         al_get_mouse_state(&mouse);
         if(mouse.buttons & 1) lvl->jet_q.front().will_shoot[0] = 1; //left mouse button

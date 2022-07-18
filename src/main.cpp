@@ -14,8 +14,11 @@ int main()
 {
 srand(time(NULL));
 if(!allegro_init()) return 1;
+al_set_new_display_flags(ALLEGRO_OPENGL);
 al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
 al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
+al_set_new_display_option(ALLEGRO_RENDER_METHOD, 1, ALLEGRO_SUGGEST);
+
 allegro5_data alleg5;
 alleg5.display = al_create_display(window_width,window_height);
 
@@ -31,17 +34,17 @@ al_register_event_source(alleg5.queue,al_get_timer_event_source(alleg5.timer));
 
 if(!alleg5.display) return 0;
 bool kill = 0;
-asset_data assets;
-texture_init(&assets,1);
+asset_data * assets = new asset_data;
+texture_init(assets,1);
 struct LevelInst lvl = {.level_name = ENUM_BKGR_TYPE_FIN};
-jet_init(&assets);
-abl_init(&assets);
-boss_init(&assets);
-gun_init(&assets);
-msl_init(&assets);
-level_init(&assets);
-bullet_init(&assets);
-particle_init(&assets);
+jet_init(assets);
+abl_init(assets);
+boss_init(assets);
+gun_init(assets);
+msl_init(assets);
+level_init(assets);
+bullet_init(assets);
+particle_init(assets);
 
 short state = SELECTION;
 al_start_timer(alleg5.timer);
@@ -49,20 +52,21 @@ while(!kill)
 {
     switch(state)
     {
-    case SELECTION: state = level_select(&lvl,&assets,&alleg5); break;
-    case MISSION_INIT: state = spawn_level(&assets,&lvl); break;
-    case MISSION: state = level(&alleg5,&assets,&lvl); break;
+    case SELECTION: state = level_select(&lvl,assets,&alleg5); break;
+    case MISSION_INIT: state = spawn_level(assets,&lvl); break;
+    case MISSION: state = level(&alleg5,assets,&lvl); break;
     case QUIT: kill = 1; break;
     }
 
 
 
 }
-texture_init(&assets,0);
+texture_init(assets,0);
 al_destroy_display(alleg5.display);
 al_destroy_event_queue(alleg5.queue);
 al_destroy_timer(alleg5.timer);
 al_destroy_font(alleg5.font);
+delete assets;
 }
 
 bool allegro_init()

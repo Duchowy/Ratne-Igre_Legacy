@@ -5,6 +5,7 @@
 
 void shoot(struct LevelInst * level, struct asset_data * asset)
 {
+#pragma omp parallel for
 for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
 {
     if(object->weap_ammo[1] > 0 && object->will_shoot[1] && !object->weap_delay[1]) //missile
@@ -23,6 +24,7 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
         ap.decay = asset->msl_data[ap.type].decay;
         for(int i = 0; i< ENUM_MSL_STATUS_FIN;i++) ap.status[i] = 0;
         ap.isBotLaunched = object->isBot;
+        #pragma omp critical
         level->msl_q.push_back(ap);
         object->weap_delay[1] = 120;
         object->weap_ammo[1]--;
@@ -32,9 +34,6 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
     if(object->weap_ammo[0] > 0 && object->will_shoot[0] && !object->weap_delay[0] ) //bullet
     {
         BulInst ap;
-        ap.color[0] = rand()%20+230;
-        ap.color[1] = rand()%20+190;
-        ap.color[2] = rand()%10+30;
 
         ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
         ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
@@ -46,7 +45,14 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
         ap.damage = asset->gun_data[object->item.player_gun].damage;
         ap.type = asset->gun_data[object->item.player_gun].ammo_type;
         ap.decay = asset->bul_data[asset->gun_data[object->item.player_gun].ammo_type].decay;
+        #pragma omp critical
+        {
+        ap.color[0] = rand()%20+230; //to be moved when random function changed
+        ap.color[1] = rand()%20+190;
+        ap.color[2] = rand()%10+30;
         level->bullet_q.push_back(ap);
+        }
+        
 
         object->weap_delay[0] = asset->gun_data[object->item.player_gun].weap_delay;
         object->weap_ammo[0]--;
@@ -66,6 +72,7 @@ object->target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - obj
 
 void target(struct LevelInst * level, struct asset_data * asset)
 {
+#pragma omp parallel for
 for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level->msl_q.end(); shell++)
 {
     if(shell->status[CONTROLLED] == 1) continue;
@@ -122,6 +129,7 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
 void action(struct LevelInst * level, struct asset_data * asset)
 {
 std::vector<JetInst>::iterator player = level->jet_q.begin();
+//#pragma omp parallel for //blocked by rand
 for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
 {
 for(int i =0; i< 3; i++) object->will_shoot[i] = 0;
@@ -147,8 +155,8 @@ switch(object->mode)
             }
             object->at_work = 1;
         }
-        break;
     }
+    break;
     case PURSUIT:
     {
         target(object,player);
@@ -233,19 +241,22 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     {
         if(object->mode == PURSUIT &&  dist < 350) //at pursuit
         {
-        triggered = 1;
+            triggered = 1;
         }
-        else if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
-            {
-                triggered = 1;
-            }
-        else object->mode = PATROL;
+        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
+        {
+            triggered = 1;
+        }
+        
+
     }
     if(triggered)
         {
             if(dist < 160) object->mode = DOGFIGHT;
             else object->mode = PURSUIT;
         }
+    else object->mode = PATROL;
+
 
     }
 
@@ -435,7 +446,7 @@ for(int i =0; i< ENUM_MSL_TYPE_FIN; i++)
         {
             case IR:
             lvl->msl_data[i].alter_limit.turn_rate = 0.005;
-            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.02;
+            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.025;
             lvl->msl_data[i].alter_limit.speed_limit[1] = 6.5;
             lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
             lvl->msl_data[i].radius = 3;
@@ -445,8 +456,8 @@ for(int i =0; i< ENUM_MSL_TYPE_FIN; i++)
             lvl->msl_data[i].decay = 130;
             break;
             case RAD:
-            lvl->msl_data[i].alter_limit.turn_rate = 0.005;
-            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.035;
+            lvl->msl_data[i].alter_limit.turn_rate = 0.006;
+            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.03;
             lvl->msl_data[i].alter_limit.speed_limit[1] = 5.5;
             lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
             lvl->msl_data[i].radius = 3;

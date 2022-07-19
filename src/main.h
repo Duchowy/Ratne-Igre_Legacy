@@ -5,8 +5,8 @@
 
 
 #define FPS 60.0
-#define window_width 1000
-#define window_height 600
+#define default_window_width 1000
+#define default_window_height 600
 #define particlesEnabled 1
 
 struct asset_data

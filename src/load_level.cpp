@@ -34,6 +34,17 @@ switch(choice->selection)
 
 }
 
+void update_button_pos(std::array<struct button_scroll, 4> & button, allegro5_data* alleg5)
+{
+for(int i = 0; i<4; i++)
+{
+button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
+button[i].y = al_get_display_height(alleg5->display) * 7/10;
+
+}
+
+}
+
 
 
 
@@ -44,10 +55,10 @@ void init_button(std::array<struct button_scroll, 4> & button, allegro5_data* al
 #### l90 h90 ####
 #################
 ###############*/
+
+update_button_pos(button, alleg5);
 for(int i = 0; i<4; i++)
 {
-    button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
-    button[i].y = al_get_display_height(alleg5->display) * 7/10;
     button[i].width = 190;
     button[i].height = 90;
 }
@@ -151,6 +162,12 @@ while(!kill && !quit)
     al_wait_for_event(alleg5->queue,&alleg5->event);
     switch (alleg5->event.type)
     {
+        case ALLEGRO_EVENT_DISPLAY_RESIZE:
+        {
+            al_acknowledge_resize(alleg5->display); 
+            update_button_pos(button,alleg5);
+        }
+        break;
         case ALLEGRO_EVENT_DISPLAY_CLOSE: quit = 1; break;
         case ALLEGRO_EVENT_TIMER: redraw = 1; break;
         case ALLEGRO_EVENT_MOUSE_AXES:
@@ -217,7 +234,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
     level->player = jet_spawn(asset,&level->player.item,0);
     level->jet_q.push_back(level->player);
-    level->jet_q.front().curr.x = window_width/2;
+    level->jet_q.front().curr.x = 300;
     level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
     enemy_spawn(level,asset);
     asset->scale_factor = 1.0;

@@ -166,6 +166,7 @@ void transform(struct LevelInst * data, struct asset_data * asset)
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
         advance(&object->curr,&object->alter, &asset->jet_data[object->item.player_jet].alter_limit, object->target_angle);
     }
+    #pragma omp parallel for
     for(std::vector<MslInst>::iterator object = data->msl_q.begin(); object != data->msl_q.end(); object++)
     {
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);

@@ -15,12 +15,13 @@ int main()
 srand(time(NULL));
 if(!allegro_init()) return 1;
 al_set_new_display_flags(ALLEGRO_OPENGL);
+al_set_new_display_flags(ALLEGRO_RESIZABLE);
 al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
 al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
 al_set_new_display_option(ALLEGRO_RENDER_METHOD, 1, ALLEGRO_SUGGEST);
 
 allegro5_data alleg5;
-alleg5.display = al_create_display(window_width,window_height);
+alleg5.display = al_create_display(default_window_width,default_window_height);
 
 alleg5.queue = al_create_event_queue();
 alleg5.font = al_create_builtin_font();

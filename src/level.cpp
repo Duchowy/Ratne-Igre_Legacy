@@ -50,19 +50,55 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
 
 void decay(struct LevelInst * level, struct asset_data * asset)
 {
+    #pragma omp parallel for
+    for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++) object->decay--;
+    for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++) object->decay--;
+    #pragma omp parallel for
+    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
+}
+
+
+void garbage_collect(asset_data * asset, LevelInst * level)
+{
+    
+    for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
+    {
+    if(object->hp <= 0) 
+    {
+        level->enemy_quality[object->item.player_jet]--;
+        if(object->ability) delete object->ability;
+        level->jet_q.erase(object);
+        object--;
+    }
+    }
+    for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++)
+    {
+    if(object->decay <= 0) 
+        {
+            level->bullet_q.erase(object);
+            object--;
+        }
+    }
+    for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++)
+    {
+    if(object->decay <= 0) 
+        {
+            level->msl_q.erase(object);
+            object--;
+        }
+    }
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
-        object->decay--;
-        if(!object->decay)
+        if(object->decay <= 0) 
         {
             level->prt_q.erase(object);
             object--;
         }
-
+        
     }
+    
 
 }
-
 
 
 float angle_addition(float object, float addition)
@@ -103,7 +139,7 @@ void collision(struct LevelInst * input, struct asset_data * asset)
 {
 
 //bullet vs jet
-
+#pragma omp parallel for
 for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != input->bullet_q.end(); shell++)
 {
 	bool destroyed = 0;
@@ -118,39 +154,30 @@ for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != inp
             if( sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2)) < asset->jet_data[target->item.player_jet].hitbox) //target hit
             {
                 destroyed = 1;
-                target->hp -= shell->damage;
-                if(target->hp < 0)
+                #pragma omp critical
                 {
-                    if(target != input->jet_q.begin())
-                    {
-                        input->enemy_quality[target->item.player_jet]--;
-                        if(target->ability) delete target->ability;
-                        input->jet_q.erase(target); //to be moved somewhere else, destruction animation
-                        target--;
-                    }
-                     
+                target->hp -= shell->damage;
                 }
                 break;
+                
             }
         }
     }
-	if(!destroyed)
-	{
-        shell->decay--;
-	}
-    else
-    {
-        input->bullet_q.erase(shell);
-        shell--;
-    }
+    if(destroyed) shell->decay = 0;
 }
 
 //msl vs jet
 
-
+#pragma omp parallel for
 for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input->msl_q.end(); shell++)
 {
 	bool activated = 0;
+
+    if(!shell->decay || shell->curr.x <= 0 || shell->curr.x >= asset->lvl_data[input->level_name].map_width || shell->curr.y <= 0 || shell->curr.y >= asset->lvl_data[input->level_name].map_height)
+		{
+		activated = 1;
+		}
+
     for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
 	{
 		if( shell->decay + 5 <= asset->msl_data[shell->type].decay  && distance(shell,target) < asset->jet_data[target->item.player_jet].hitbox + asset->msl_data[shell->type].radius) //target hit
@@ -158,43 +185,18 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
             if(shell->type != RAD || (shell->type == RAD && shell->isBotLaunched != target->isBot)) //self-enemy check
             {  
                 activated = 1;
-
             }
             if(activated)
             {
+                #pragma omp critical
                 target->hp -= asset->msl_data[shell->type].damage;
-                if(target->hp < 0)
-                {
-                    if(target != input->jet_q.begin())
-                    {
-                        input->enemy_quality[target->item.player_jet]--;
-                        if(target->ability) delete target->ability;
-                        input->jet_q.erase(target); //to be moved somewhere else, destruction animation
-                        target--;
-                    }
-                    
-                }
-
-
-
             }
 		}
 	}
 
-	if(!activated)
-	{
-        shell->decay--;
-	    if(!shell->decay || shell->curr.x <= 0 || shell->curr.x >= asset->lvl_data[input->level_name].map_width || shell->curr.y <= 0 || shell->curr.y >= asset->lvl_data[input->level_name].map_height)
-		{
-		activated = 1;
-        input->msl_q.erase(shell);
-		shell--;
-		}
-	}
-    else
+    if(activated)
     {
-        input->msl_q.erase(shell);
-		shell--;
+        shell->decay = 0;
     }
 }
 
@@ -204,8 +206,11 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
 
 }
 
-void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset)
+void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, struct allegro5_data * alleg5)
 {
+int window_width = al_get_display_width(alleg5->display);
+int window_height = al_get_display_height(alleg5->display);
+
 {//jet section
     std::vector<JetInst>::iterator player = level->jet_q.begin();
     al_draw_scaled_rotated_bitmap(asset->jet_texture[player->item.player_jet],23,23,
@@ -308,8 +313,11 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blend
 
 
 
-void draw_ui(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FONT * font)
+void draw_ui(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
 {
+int window_width = al_get_display_width(alleg5->display);
+int window_height = al_get_display_height(alleg5->display);
+
 std::vector<JetInst>::iterator player = level->jet_q.begin();
 al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_height,al_map_rgb(0,20,20));
 
@@ -319,10 +327,10 @@ al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_he
 
 
 float current_HP = (float) player->hp / asset->jet_data[player->item.player_jet].hp;
-if(current_HP > 0.9) al_draw_text(font,al_map_rgb(0,240,0),window_width-al_get_text_width(font,"OK")-10,window_height-20,0,"OK");
-else if ( current_HP > 0.7) al_draw_text(font,al_map_rgb(240,240,0),window_width-al_get_text_width(font,"OK")-10,window_height-20, 0,"OK");
-else if( current_HP > 0.3) al_draw_text(font,al_map_rgb(240,240,0),window_width-al_get_text_width(font,"Damaged")-10,window_height-20,0,"Damaged");
-else al_draw_text(font,al_map_rgb(240,0,0),window_width-al_get_text_width(font,"Damaged")-10,window_height-20,0,"Damaged");
+if(current_HP > 0.9) al_draw_text(alleg5->font,al_map_rgb(0,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20,0,"OK");
+else if ( current_HP > 0.7) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20, 0,"OK");
+else if( current_HP > 0.3) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
+else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
 
 
 
@@ -330,20 +338,20 @@ else al_draw_text(font,al_map_rgb(240,0,0),window_width-al_get_text_width(font,"
 /*########
 ## AMMO ##
 ########*/
-al_draw_filled_rectangle(0,window_height,al_get_text_width(font,"GUN")+5 + al_get_text_width(font,"RKT")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
+al_draw_filled_rectangle(0,window_height,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"RKT")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
 
 float ammo_percentage = (float) player->weap_ammo[0] / (asset->gun_data[player->item.player_gun].ammo_max * asset->jet_data[player->item.player_jet].gun_mult);
 ALLEGRO_COLOR ammo_color;
 if(ammo_percentage > 0.4) ammo_color = al_map_rgb(240,240,240);
 else ammo_color = al_map_rgb(250,pow((ammo_percentage/0.4),3)*255,pow((ammo_percentage/0.4),3)*255);
-al_draw_filled_rectangle(0,window_height-20, al_get_text_width(font,"GUN"), window_height -20 - 60*ammo_percentage,ammo_color);    //ammo bar
+al_draw_filled_rectangle(0,window_height-20, al_get_text_width(alleg5->font,"GUN"), window_height -20 - 60*ammo_percentage,ammo_color);    //ammo bar
 bool used = (player->weap_ammo[0] != 0);
-al_draw_text(font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
+al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
 
 used = (player->weap_ammo[1] != 0);
-al_draw_text(font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(font,"GUN")+5,window_height-10,0,"RKT");    //rocket bar
+al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5,window_height-10,0,"RKT");    //rocket bar
 for(int i = 0; i< player->weap_ammo[1]; i++) 
-al_draw_line(al_get_text_width(font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(font,"GUN")+5 + al_get_text_width(font,"RKT"),window_height-20.5 -3*i,
+al_draw_line(al_get_text_width(alleg5->font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"RKT"),window_height-20.5 -3*i,
 al_map_rgb(240,230,140),1);
 
 
@@ -469,7 +477,6 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != le
 
 
 
-
 int level(allegro5_data*alleg5, asset_data * assets, LevelInst * lvl)
 {
 bool kill = 0;
@@ -485,6 +492,7 @@ while(!kill)
     al_wait_for_event(alleg5->queue,&alleg5->event);
     switch (alleg5->event.type)
     {
+        case ALLEGRO_EVENT_DISPLAY_RESIZE: al_acknowledge_resize(alleg5->display); break;
         case ALLEGRO_EVENT_DISPLAY_CLOSE: kill = 1; break;
         case ALLEGRO_EVENT_TIMER: redraw = 1; break;
         case ALLEGRO_EVENT_MOUSE_AXES:
@@ -529,7 +537,8 @@ while(!kill)
     }
     if(redraw && al_is_event_queue_empty(alleg5->queue))
     {
-        
+        int window_width = al_get_display_width(alleg5->display);
+        int window_height = al_get_display_height(alleg5->display);
         { //player actions
         al_get_mouse_state(&mouse);
         if(mouse.buttons & 1) lvl->jet_q.front().will_shoot[0] = 1; //left mouse button
@@ -554,14 +563,15 @@ while(!kill)
 
         
 
-        draw(lvl,lvl->jet_q.begin(),assets);
-        draw_ui(lvl,assets,alleg5->font);
+        draw(lvl,lvl->jet_q.begin(),assets,alleg5);
+        draw_ui(lvl,assets,alleg5);
 //debug
         //debug_data(lvl,assets,alleg5->font);
         
         al_flip_display();
         al_clear_to_color(al_map_rgb(27,27,27));
         redraw = 0;
+        garbage_collect(assets,lvl);
         cooldown(lvl->jet_q);
         decay(lvl,assets);
 

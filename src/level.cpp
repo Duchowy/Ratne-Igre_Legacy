@@ -55,11 +55,15 @@ void decay(struct LevelInst * level, struct asset_data * asset)
     for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++) object->decay--;
     #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
+    for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++) object->decay--;
+
+
 }
 
 
 void garbage_collect(asset_data * asset, LevelInst * level)
 {
+    
     
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
@@ -95,6 +99,14 @@ void garbage_collect(asset_data * asset, LevelInst * level)
             object--;
         }
         
+    }
+    for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
+    {
+        if(object->decay <= 0) 
+        {
+            level->radar.node_q.erase(object);
+            object--;
+        }
     }
     
 
@@ -218,8 +230,8 @@ int window_height = al_get_display_height(alleg5->display);
 
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
-
-    if(distance(player,object) < 800) 
+    float dist = distance(player,object);
+    if(dist < 1000) 
     {
     float x_dist = object->curr.x - player->curr.x;
     float y_dist = object->curr.y - player->curr.y;
@@ -229,8 +241,23 @@ int window_height = al_get_display_height(alleg5->display);
 
     int full_hp = asset->jet_data[object->item.player_jet].hp;
 
+    if(dist < 800)
+    {
     al_draw_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],23,23,
     x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
+    }
+    else
+    {
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+        al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
+        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
+        );
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    }
+    
+    
+    
+    
     al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
         if(asset->jet_data[object->item.player_jet].isBoss) 
         {
@@ -360,7 +387,7 @@ al_map_rgb(240,230,140),1);
 ########*/
 
 
-
+/*
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
@@ -377,6 +404,34 @@ al_map_rgb(240,230,140),1);
         
 
     }
+*/
+{
+ALLEGRO_COLOR indicator;
+if(player->item.player_jet == MIG21) indicator = al_map_rgb(240,240,0);
+else indicator = al_map_rgb(0,240,0);
+float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
+
+al_draw_line(window_width/2 + 14*cos(rad_pointer),window_height/2 + 14*sin(rad_pointer),
+            window_width/2 + 48*cos(rad_pointer),window_height/2 + 48*sin(rad_pointer),
+            indicator,0.8);
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
+{
+    float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
+    float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
+    float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
+    float opacity = 1 - pow(1 - (float) object->decay/48,4);
+    al_draw_filled_circle(x_pos, y_pos,
+    2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+    );
+    al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
+}
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+
+
+}
+
+
 
 }
 
@@ -473,6 +528,37 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != le
 
 }
 
+void move_radar(LevelInst * level)
+{
+    level->radar.turn_angle+= level->radar.turn_speed;
+    if(fabs(level->radar.turn_angle) > level->radar.range_rad)
+    {
+        level->radar.turn_speed = -level->radar.turn_speed;
+        level->radar.turn_angle+= level->radar.turn_speed;
+    }
+}
+
+void process_radar(LevelInst * level)
+{
+    
+    std::vector<JetInst>::iterator player = level->jet_q.begin();
+    float tied_radar_pos = angle_addition(player->curr.turn_angle, level->radar.turn_angle);
+    for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
+    {
+        float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
+    if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && distance(object,player) < level->radar.range_dist)
+    {
+        struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = 48};
+        level->radar.node_q.push_back(newNode);
+    }
+
+    }
+
+
+
+
+}
+
 
 
 
@@ -554,6 +640,7 @@ while(!kill)
         target(lvl,assets);
 //transformation
         transform(lvl,assets);
+        move_radar(lvl);
 
         collision(lvl,assets);
 //draw
@@ -564,6 +651,7 @@ while(!kill)
         
 
         draw(lvl,lvl->jet_q.begin(),assets,alleg5);
+        process_radar(lvl);
         draw_ui(lvl,assets,alleg5);
 //debug
         //debug_data(lvl,assets,alleg5->font);

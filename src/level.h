@@ -13,6 +13,22 @@ unsigned int map_height;
 short next_level;
 };
 
+struct RadarNode
+{
+float dist;
+float rad_dist;
+short decay;
+};
+
+
+struct RadarInst
+{
+float range_rad;
+float range_dist;
+float turn_angle;
+float turn_speed;
+std::vector<RadarNode> node_q;
+};
 
 
 
@@ -37,7 +53,7 @@ std::vector<JetInst> jet_q;
 std::vector<MslInst> msl_q;
 std::vector<ParticleInst> prt_q;
 float scale;
-
+struct RadarInst radar;
 struct JetInst player;
 };
 
@@ -47,7 +63,6 @@ struct Particle
     ALLEGRO_BITMAP * texture;
     int decay;
 };
-
 
 
 

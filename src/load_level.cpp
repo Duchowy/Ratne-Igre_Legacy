@@ -144,6 +144,10 @@ choice.item.player_gun = 0;
 choice.item.player_msl = 0;
 choice.item.player_spc = 0;
 choice.selection = 0;
+lvl->radar.range_dist = 1800;
+lvl->radar.range_rad = PI/6;
+lvl->radar.turn_angle = PI/6;
+lvl->radar.turn_speed = -(PI/3)/30;
 }
 
 
@@ -225,7 +229,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     
     al_clear_to_color(al_map_rgb(0,0,0));
     al_flip_display();
-    level->jet_q.clear();
+    level->jet_q.clear(); //memory leaking 
     level->bullet_q.clear();
     level->msl_q.clear();
     level->prt_q.clear();

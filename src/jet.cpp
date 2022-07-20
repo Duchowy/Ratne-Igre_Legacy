@@ -154,6 +154,11 @@ switch(object->mode)
                 object->target_angle  = atan2(( target_c[1] - object->curr.y) ,(target_c[0] - object->curr.x));
             }
             object->at_work = 1;
+            if(!object->at_work)
+            {
+                if(rand()%900 == 0) object->target_angle = (object->target_angle, (float)0.6 *rand()/RAND_MAX - 0.3);
+            }
+
         }
     }
     break;
@@ -247,8 +252,6 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         {
             triggered = 1;
         }
-        
-
     }
     if(triggered)
         {
@@ -258,7 +261,48 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     else object->mode = PATROL;
 
 
+}
+
+if(input_vec.size() > 1)
+{
+    #pragma omp parallel for
+    for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
+    {
+        if(object->mode != PATROL) continue;
+        float obj_dist = distance(object,player);
+        for(std::vector<JetInst>::iterator ally = object+1; ally != input_vec.end(); ally++)
+                {
+                    if(object->mode != PATROL && ally->mode != PATROL) continue;
+                    float dist_between = distance(object,ally);
+                    float aly_dist = distance(ally,player);
+                    #pragma omp critical
+                    {
+                        if(dist_between < 550)
+                        {
+                            if(object->mode != PATROL)
+                            {
+                                if(aly_dist < 450)
+                                {
+                                    if(aly_dist < 160) ally->mode = DOGFIGHT;
+                                    else ally->mode = PURSUIT;
+                                }
+                            }
+                            else
+                            {
+                                if(obj_dist < 450)
+                                {
+                                    if(obj_dist < 160) object->mode = DOGFIGHT;
+                                    else object->mode = PURSUIT;
+                                }
+                            }
+                        }
+                    }
+                }
+
     }
+}
+
+
 
 }
 

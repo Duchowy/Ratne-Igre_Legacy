@@ -148,6 +148,7 @@ lvl->radar.range_dist = 1800;
 lvl->radar.range_rad = PI/6;
 lvl->radar.turn_angle = PI/6;
 lvl->radar.turn_speed = -(PI/3)/30;
+lvl->radar.mode = 0;
 }
 
 
@@ -229,11 +230,12 @@ int spawn_level(asset_data * asset, LevelInst * level)
     
     al_clear_to_color(al_map_rgb(0,0,0));
     al_flip_display();
-    level->jet_q.clear(); //memory leaking 
+    for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++) if(object->ability) delete object->ability;
+    level->jet_q.clear();
     level->bullet_q.clear();
     level->msl_q.clear();
     level->prt_q.clear();
-
+    level->radar.node_q.clear();
 
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
     level->player = jet_spawn(asset,&level->player.item,0);

@@ -225,8 +225,7 @@ int window_height = al_get_display_height(alleg5->display);
 
 {//jet section
     std::vector<JetInst>::iterator player = level->jet_q.begin();
-    al_draw_scaled_rotated_bitmap(asset->jet_texture[player->item.player_jet],23,23,
-    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
+    
 
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
@@ -269,6 +268,16 @@ int window_height = al_get_display_height(alleg5->display);
             al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
             al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
         }
+    if(object->mode != PATROL)
+    {
+        al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+
+    }
+    #ifdef DEBUG
+        al_draw_text(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,std::to_string(object->mode).c_str());
+    #endif
+
+
     }
     
 
@@ -405,33 +414,46 @@ al_map_rgb(240,230,140),1);
 
     }
 */
+
 {
 ALLEGRO_COLOR indicator;
 if(player->item.player_jet == MIG21) indicator = al_map_rgb(240,240,0);
 else indicator = al_map_rgb(0,240,0);
 float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
 
-al_draw_line(window_width/2 + 14*cos(rad_pointer),window_height/2 + 14*sin(rad_pointer),
-            window_width/2 + 48*cos(rad_pointer),window_height/2 + 48*sin(rad_pointer),
-            indicator,0.8);
+
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+al_draw_filled_pieslice(window_width/2,window_height/2,48,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
+
 for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
 {
     float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
     float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
     float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
     float opacity = 1 - pow(1 - (float) object->decay/48,4);
-    al_draw_filled_circle(x_pos, y_pos,
-    2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
-    );
-    al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
+    
+
+        al_draw_filled_circle(x_pos, y_pos,
+        2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+        );
+        al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
+
 }
+al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle),window_height/2 + 18*sin(player->curr.turn_angle),
+            window_width/2 + 48*cos(player->curr.turn_angle),window_height/2 + 48*sin(player->curr.turn_angle),
+            al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
+
+al_draw_arc(window_width/2,window_height/2,30,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8);
+
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-
+al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_pointer),
+            window_width/2 + 48*cos(rad_pointer),window_height/2 + 48*sin(rad_pointer),
+            indicator,0.8); //radar seeker line
 
 }
 
-
+al_draw_scaled_rotated_bitmap(asset->jet_texture[player->item.player_jet],23,23,
+    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
 
 }
 
@@ -540,15 +562,19 @@ void move_radar(LevelInst * level)
 
 void process_radar(LevelInst * level)
 {
-    
+    short decay;
+    if(!level->radar.mode) decay = 48;
+    else decay = 24;
+
     std::vector<JetInst>::iterator player = level->jet_q.begin();
     float tied_radar_pos = angle_addition(player->curr.turn_angle, level->radar.turn_angle);
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
-    if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && distance(object,player) < level->radar.range_dist)
+        float range_obj_player = distance(object,player);
+    if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && range_obj_player < level->radar.range_dist && range_obj_player > 450)
     {
-        struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = 48};
+        struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = decay};
         level->radar.node_q.push_back(newNode);
     }
 
@@ -604,6 +630,30 @@ while(!kill)
                 if(lvl->level_name < ENUM_LVL_TYPE_FIN) return SELECTION;
                 else return MISSION_INIT;
                 break;
+                case ALLEGRO_KEY_R:
+                {
+                lvl->radar.mode = !lvl->radar.mode;
+                float new_range_rad;
+                    if(!lvl->radar.mode)
+                    {
+                        new_range_rad = PI/6;
+                    }
+                    else
+                    {
+                        new_range_rad = PI/12;
+                    }
+                    if(lvl->radar.range_rad > 0) lvl->radar.range_rad = new_range_rad;
+                    else lvl->radar.range_rad = - new_range_rad;
+
+
+                    if(fabs(lvl->radar.turn_angle) > new_range_rad )
+                    {
+                        if(lvl->radar.turn_angle > 0) lvl->radar.turn_angle = new_range_rad;
+                        else lvl->radar.turn_angle = -new_range_rad;
+                    }
+                    lvl->radar.node_q.clear();
+                }
+                break;
             }
         break;
         }
@@ -654,8 +704,9 @@ while(!kill)
         process_radar(lvl);
         draw_ui(lvl,assets,alleg5);
 //debug
-        //debug_data(lvl,assets,alleg5->font);
-        
+        #ifdef DEBUG
+        debug_data(lvl,assets,alleg5->font);
+        #endif
         al_flip_display();
         al_clear_to_color(al_map_rgb(27,27,27));
         redraw = 0;

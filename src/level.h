@@ -23,6 +23,7 @@ short decay;
 
 struct RadarInst
 {
+bool mode;
 float range_rad;
 float range_dist;
 float turn_angle;

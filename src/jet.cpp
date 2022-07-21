@@ -61,11 +61,11 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
 }
 }
 
-void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target)
+void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target,float offset)
 {
     float target_a[2];
-    target_a[0] =  target->curr.x + 16*cos(target->curr.turn_angle)*target->curr.speed;
-    target_a[1] = target->curr.y + 16*sin(target->curr.turn_angle)*target->curr.speed;
+    target_a[0] =  target->curr.x + offset*cos(target->curr.turn_angle)*target->curr.speed;
+    target_a[1] = target->curr.y + offset*sin(target->curr.turn_angle)*target->curr.speed;
 
 object->target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
 }
@@ -164,7 +164,7 @@ switch(object->mode)
     break;
     case PURSUIT:
     {
-        target(object,player);
+        target(object,player,16);
         if(fabs(rad_distance(object,player)) < asset->gun_data[object->item.player_gun].spread) 
         {
             if(asset->jet_data[object->item.player_jet].isBoss)
@@ -181,17 +181,25 @@ switch(object->mode)
         
         
         object->alter.speed_mode = AFTERBURNER;
-        break;
     }
+    break;
     case DOGFIGHT:
     {
-        target(object,level->jet_q.begin());
-        float rad_dist = angle_difference(object->curr.turn_angle,object->target_angle);
-        if(fabs(rad_dist) < asset->jet_data[object->item.player_jet].alter_limit.alter.turn_speed )  object->will_shoot[0] = 1; //gun
-        if(fabs(rad_dist) > PI/2) object->alter.speed_mode = AFTERBURNER;
-        else object->alter.speed_mode = STANDARD;
-        break;
+        target(object,level->jet_q.begin(),8);
+        float rad_dist = angle_difference(object->curr.turn_angle,object->target_angle); //radial distance between object and target
+        if(fabs(rad_dist) < asset->gun_data[object->item.player_gun].spread )  object->will_shoot[0] = 1; //gun
+        if(fabs(rad_dist) > PI/2)
+        {
+            if(object->curr.speed > player->curr.speed) object->alter.speed_mode = AFTERBURNER;
+            else object->alter.speed_mode = STANDARD;
+        }
+        else 
+        {
+            if(object->curr.speed < player->curr.speed) object->alter.speed_mode = AIRBRAKE;
+            else object->alter.speed_mode = STANDARD;
+        }
     }
+    break;
 
 
 }
@@ -248,10 +256,11 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         {
             triggered = 1;
         }
-        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 100 ))
+        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 120 ))
         {
             triggered = 1;
         }
+        if(object->mode == DOGFIGHT) triggered = 1;
     }
     if(triggered)
         {
@@ -272,7 +281,7 @@ if(input_vec.size() > 1)
         float obj_dist = distance(object,player);
         for(std::vector<JetInst>::iterator ally = object+1; ally != input_vec.end(); ally++)
                 {
-                    if(object->mode != PATROL && ally->mode != PATROL) continue;
+                    if( (object->mode != PATROL) == (ally->mode != PATROL)) continue;
                     float dist_between = distance(object,ally);
                     float aly_dist = distance(ally,player);
                     #pragma omp critical

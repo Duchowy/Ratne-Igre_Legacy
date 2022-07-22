@@ -2,7 +2,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define DEBUG
+
 
 #define FPS 60.0
 #define default_window_width 1000

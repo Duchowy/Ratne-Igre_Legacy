@@ -10,7 +10,7 @@ RELEASE_EXE = release/ratne.exe
 CC = g++
 CFLAGS = -std=c++11 -Wall
 LDFLAGS = -o $(EXE)
-CFDEBUG = -g
+CFDEBUG = -g -D DEBUG
 RELEASE_CFLAGS = -O2 -s -mwindows -static-libgcc -static-libstdc++
 
 $(EXE): $(DEPS)

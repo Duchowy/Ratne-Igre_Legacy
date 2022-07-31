@@ -9,6 +9,19 @@
 #define default_window_height 600
 #define particlesEnabled 1
 
+struct config_data
+{
+float scaleUI; //0 to automatic
+unsigned int default_display_width;
+unsigned int default_display_height;
+bool particlesEnable;
+bool verticalSyncEnabled;
+unsigned short MSAA;
+};
+
+
+
+
 struct asset_data
 {
 float scale_factor;

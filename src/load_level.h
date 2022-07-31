@@ -10,15 +10,6 @@ unsigned short selection;
 
 
 
-struct button_scroll
-{
-    int x;
-    int y;
-    int width;
-    int height;
-    std::string name;
-    std::string desc;
-};
 
 
 int level_select(struct LevelInst *, struct asset_data *,allegro5_data*);

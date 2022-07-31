@@ -56,6 +56,7 @@ std::vector<ParticleInst> prt_q;
 float scale;
 struct RadarInst radar;
 struct JetInst player;
+std::string finish_prompt;
 };
 
 

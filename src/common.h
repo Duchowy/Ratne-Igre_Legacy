@@ -31,3 +31,18 @@ ALLEGRO_FONT * font;
 #include <omp.h>
 #include "enum.h"
 #endif
+
+#ifndef COMMON_H
+#define COMMON_H
+
+struct box_string
+{
+    int x;
+    int y;
+    int width;
+    int height;
+    std::string name;
+    std::string desc;
+};
+
+#endif

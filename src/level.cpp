@@ -358,6 +358,13 @@ std::vector<JetInst>::iterator player = level->jet_q.begin();
 al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_height,al_map_rgb(0,20,20));
 
 /*########
+### HUD ##
+########*/
+
+
+
+
+/*########
 ### HP ###
 ########*/
 
@@ -430,8 +437,19 @@ for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); objec
     float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
     float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
     float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
-    float opacity = 1 - pow(1 - (float) object->decay/48,4);
+    float opacity;
     
+    switch(level->radar.mode)
+    {
+        case 0:
+        opacity = 1 - pow(1 - (float) object->decay/48,4);
+        break;
+        case 1:
+        opacity = 1 - pow(1 - (float) object->decay/24,2);
+        break;
+    }
+
+
 
         al_draw_filled_circle(x_pos, y_pos,
         2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
@@ -585,6 +603,22 @@ void process_radar(LevelInst * level)
 
 }
 
+void prompt_screen(allegro5_data * alleg5, LevelInst * level) //to change level struct to universal prompt, use desc
+{
+int display_width = al_get_display_width(alleg5->display);
+int display_height = al_get_display_height(alleg5->display); 
+
+
+box_string prompt = {.x = display_width/2, .y = display_height/2, .width = 400, .height = 150, .desc = "Press ENTER to continue"};
+
+al_draw_filled_rectangle(prompt.x-prompt.width/2,prompt.y-prompt.height/2,prompt.x+prompt.width/2,prompt.y+prompt.height/2,al_map_rgb(27,27,17));
+
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),prompt.x,prompt.y,ALLEGRO_ALIGN_CENTER,prompt.desc.c_str());
+
+
+
+}
+
 
 
 
@@ -594,7 +628,7 @@ int level(allegro5_data*alleg5, asset_data * assets, LevelInst * lvl)
 bool kill = 0;
 bool redraw = 1;
 
-
+bool finished = 0;
 
 ALLEGRO_MOUSE_STATE mouse;
 
@@ -626,8 +660,18 @@ while(!kill)
                 case ALLEGRO_KEY_SPACE:
                 lvl->jet_q.front().will_shoot[1] = 1;
                 break;
+                case ALLEGRO_KEY_ENTER:
+                if(finished) 
+                {
+                    lvl->level_name = assets->lvl_data[lvl->level_name].next_level;
+                    return MISSION_INIT;
+                }
+                break;
                 case ALLEGRO_KEY_ESCAPE:
-                if(lvl->level_name < ENUM_LVL_TYPE_FIN) return SELECTION;
+                if(lvl->level_name < ENUM_LVL_TYPE_FIN) 
+                { 
+                    if(!finished) return SELECTION;
+                }
                 else return MISSION_INIT;
                 break;
                 case ALLEGRO_KEY_R:
@@ -703,6 +747,7 @@ while(!kill)
         draw(lvl,lvl->jet_q.begin(),assets,alleg5);
         process_radar(lvl);
         draw_ui(lvl,assets,alleg5);
+        if(finished) prompt_screen(alleg5,lvl);
 //debug
         #ifdef DEBUG
         debug_data(lvl,assets,alleg5->font);
@@ -716,10 +761,10 @@ while(!kill)
 
         for(int i =1; i<3; i++) lvl->jet_q.front().will_shoot[i] = 0;
 
-        if(!alive_enemy_jets(lvl) && assets->lvl_data[lvl->level_name].next_level != ENUM_BKGR_TYPE_FIN)
+        if(!alive_enemy_jets(lvl) && !finished)
         {
-            lvl->level_name = assets->lvl_data[lvl->level_name].next_level;
-            return MISSION_INIT;
+            finished = 1;
+            //return MISSION_INIT;
         }
 
 

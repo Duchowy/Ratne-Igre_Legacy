@@ -3,7 +3,7 @@
 #include "main.h"
 #include "load_level.h"
 
-void map_button(std::array<struct button_scroll, 4> & button,struct curr_selection * choice)
+void map_button(std::array<box_string, 4> & button,struct curr_selection * choice)
 {
 
 switch(choice->item.player_jet)
@@ -34,7 +34,7 @@ switch(choice->selection)
 
 }
 
-void update_button_pos(std::array<struct button_scroll, 4> & button, allegro5_data* alleg5)
+void update_button_pos(std::array<box_string, 4> & button, allegro5_data* alleg5)
 {
 for(int i = 0; i<4; i++)
 {
@@ -48,7 +48,7 @@ button[i].y = al_get_display_height(alleg5->display) * 7/10;
 
 
 
-void init_button(std::array<struct button_scroll, 4> & button, allegro5_data* alleg5)
+void init_button(std::array<box_string, 4> & button, allegro5_data* alleg5)
 {
 /*###############
 #################
@@ -65,7 +65,7 @@ for(int i = 0; i<4; i++)
 }
 
 
-void update(std::array<struct button_scroll, 4> & button,struct curr_selection * choice,ALLEGRO_MOUSE_STATE *mouse)
+void update(std::array<box_string, 4> & button,struct curr_selection * choice,ALLEGRO_MOUSE_STATE *mouse)
 {
 short number= -1;
 
@@ -107,7 +107,7 @@ switch(number)
 al_set_mouse_z(0); //zero the scroll
 }
 
-void draw(std::array<struct button_scroll, 4> & button,struct asset_data * assets,allegro5_data* alleg5, struct curr_selection * choice)
+void draw(std::array<box_string, 4> & button,struct asset_data * assets,allegro5_data* alleg5, struct curr_selection * choice)
 {
 for(int i = 0; i<4; i++)
 {
@@ -124,7 +124,7 @@ button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_text
 
 int level_select(struct LevelInst * lvl,struct asset_data * assets, allegro5_data* alleg5)
 {
-std::array<struct button_scroll, 4> button;
+std::array<box_string, 4> button;
 struct curr_selection choice;
 
 init_button(button,alleg5);
@@ -236,6 +236,24 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->msl_q.clear();
     level->prt_q.clear();
     level->radar.node_q.clear();
+
+    if(asset->lvl_data[level->level_name].next_level != ENUM_BKGR_TYPE_FIN)
+    {
+        unsigned short rander = rand()%4;
+        switch(rander)
+        {
+            case 0: level->finish_prompt = "Ready for more? You'd better be"; break;
+            case 1: level->finish_prompt = "Don't let your guard down just jet"; break;
+            case 2: level->finish_prompt = "Move on, more hostiles on the way"; break;
+            case 3: level->finish_prompt = "Press enter when ready to proceed"; break;
+        }
+    }else
+    {
+        level->finish_prompt = "Mission accomplished. Return home";
+    }
+
+
+
 
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
     level->player = jet_spawn(asset,&level->player.item,0);

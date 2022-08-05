@@ -46,6 +46,17 @@ struct ParticleInst{
 };
 
 
+
+struct prompt_screen{
+unsigned short type;
+struct box_string body;
+short decay;
+bool X_Action;
+bool Z_Action;
+};
+
+
+
 struct LevelInst{
 unsigned short level_name;
 unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
@@ -53,10 +64,13 @@ std::vector<BulInst> bullet_q;
 std::vector<JetInst> jet_q;
 std::vector<MslInst> msl_q;
 std::vector<ParticleInst> prt_q;
+std::vector<prompt_screen> prompt_q;
 float scale;
 struct RadarInst radar;
 struct JetInst player;
-std::string finish_prompt;
+bool pauseEngaged;
+bool finished;
+bool finalPromptEngaged;
 };
 
 

@@ -335,7 +335,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot
     object.target_angle = object.curr.turn_angle;
     object.alter.speed_mode = STANDARD;
     object.alter.turn_speed = 0.;
-    object.curr.speed = asset->jet_data[selected->player_jet].default_speed;
+    object.curr.speed = asset->jet_data[selected->player_jet].alter_limit.default_speed;
     object.at_work = 0;
     object.weap_ammo[0] = (float) asset->jet_data[selected->player_jet].gun_mult * asset->gun_data[selected->player_gun].ammo_max;
     object.weap_ammo[1] = (float) asset->jet_data[selected->player_jet].msl_mult * asset->msl_data[selected->player_msl].ammo_max;
@@ -345,6 +345,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot
     object.alter.rotatable = 1;
     object.ability = nullptr;
     object.isBot = bot;
+    object.overwrite_limit = nullptr;
 
 
     for(int i =0; i < 3; i++) object.will_shoot[i] = 0;
@@ -535,8 +536,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0075;
             data->jet_data[i].alter_limit.alter.turn_speed = 0.03;
             data->jet_data[i].alter_limit.turn_rate = 0.0075;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 1.8;
-            data->jet_data[i].default_speed = 2.6;
+            data->jet_data[i].alter_limit.default_speed = 2.6;
             data->jet_data[i].alter_limit.speed_limit[1] = 2.9;
             data->jet_data[i].hp = 100;
             data->jet_data[i].hitbox = 6;
@@ -550,8 +552,9 @@ void jet_init(struct asset_data * data)
             {
             data->jet_data[i].alter_limit.alter.turn_speed = 0.026;
             data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 2.0;
-            data->jet_data[i].default_speed = 2.4;
+            data->jet_data[i].alter_limit.default_speed = 2.4;
             data->jet_data[i].alter_limit.speed_limit[1] = 3.0;
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0125;
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0075;
@@ -567,8 +570,9 @@ void jet_init(struct asset_data * data)
             {
             data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
             data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 2.4;
-            data->jet_data[i].default_speed = 3.0;
+            data->jet_data[i].alter_limit.default_speed = 3.0;
             data->jet_data[i].alter_limit.speed_limit[1] = 3.4;
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
@@ -583,11 +587,12 @@ void jet_init(struct asset_data * data)
             case HARRIER:
             {
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
-            data->jet_data[i].alter_limit.speed_rate[1] = 0.0050;
-            data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
-            data->jet_data[i].alter_limit.turn_rate = 0.009;
-            data->jet_data[i].alter_limit.speed_limit[0] = 1.5;
-            data->jet_data[i].default_speed = 1.9;
+            data->jet_data[i].alter_limit.speed_rate[1] = 0.0150;
+            data->jet_data[i].alter_limit.alter.turn_speed = 0.019;
+            data->jet_data[i].alter_limit.turn_rate = 0.003;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
+            data->jet_data[i].alter_limit.speed_limit[0] = 1.2;
+            data->jet_data[i].alter_limit.default_speed = 1.9;
             data->jet_data[i].alter_limit.speed_limit[1] = 2.2;
             data->jet_data[i].hp = 110;
             data->jet_data[i].hitbox = 6;
@@ -601,8 +606,9 @@ void jet_init(struct asset_data * data)
             {
             data->jet_data[i].alter_limit.alter.turn_speed = 0.026;
             data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 2.2;
-            data->jet_data[i].default_speed = 2.6;
+            data->jet_data[i].alter_limit.default_speed = 2.6;
             data->jet_data[i].alter_limit.speed_limit[1] = 3.4;
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0125;
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0095;
@@ -618,8 +624,9 @@ void jet_init(struct asset_data * data)
             {
             data->jet_data[i].alter_limit.alter.turn_speed = 0.017;
             data->jet_data[i].alter_limit.turn_rate = 0.009;
+            data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 3.0;
-            data->jet_data[i].default_speed = 3.6;
+            data->jet_data[i].alter_limit.default_speed = 3.6;
             data->jet_data[i].alter_limit.speed_limit[1] = 4.4;
             data->jet_data[i].alter_limit.speed_rate[0] = 0.0100;
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;

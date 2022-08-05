@@ -17,13 +17,35 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FON
                 case 0: buffer = std::to_string(object->alter.turn_speed); break;
                 case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
                 case 2: buffer = std::to_string(object->target_angle)+" target"; break;
-                case 3: buffer = std::to_string(level->bullet_q.size())+" num of bull"; break;
+                case 3: buffer = std::to_string(object->alter.turn_speed)+" turn speed"; break;
                 case 4: buffer = std::to_string(object->curr.speed)+" speed"; break;
                 case 5: buffer = std::to_string(object->will_shoot[0])+" shoot"; break;
             }
             al_draw_text(font,al_map_rgb(240,0,240),0,i*10,0,buffer.c_str());
         }
 }
+
+
+void destroy_prompt_screen(asset_data * asset, LevelInst * level, std::vector<prompt_screen>::iterator object)
+{
+if(object != level->prompt_q.end() && level->prompt_q.size()) object = level->prompt_q.end()-1;
+
+switch(object->type)
+{
+case 0:
+level->prompt_q.erase(object);
+level->finished = 1;
+break;
+
+default:
+break;
+}
+
+
+
+
+}
+
 
 void cooldown(std::vector<JetInst> &input_vec)
 {
@@ -56,7 +78,7 @@ void decay(struct LevelInst * level, struct asset_data * asset)
     #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
     for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++) object->decay--;
-
+    for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->decay >= 0) object->decay--;
 
 }
 
@@ -107,6 +129,17 @@ void garbage_collect(asset_data * asset, LevelInst * level)
             level->radar.node_q.erase(object);
             object--;
         }
+    }
+    for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++)
+    {
+        if(object->decay == 0)
+        {
+            destroy_prompt_screen(asset,level,object);
+            object--;
+        }
+
+
+
     }
     
 
@@ -215,6 +248,26 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
 
 
 
+
+}
+
+void draw_pause_screen(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
+{
+int window_width = al_get_display_width(alleg5->display);
+int window_height = al_get_display_height(alleg5->display); 
+
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+al_draw_filled_rectangle(0,0,window_width,window_height,al_map_rgba(10,10,10,120));
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+
+al_draw_filled_rectangle(window_width/2-300,window_height/2-100,window_width/2+300,window_height/2+100,al_map_rgb(27,27,17));
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2-15,ALLEGRO_ALIGN_CENTER,"PAUSED");
+std::string desc = "Press ESC to unpause.";
+
+
+if(level->level_name < ENUM_LVL_TYPE_FIN) desc += "\nPress X to exit to menu.";
+else desc += "\nPress X to reset mission.";
+al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2,400,10,ALLEGRO_ALIGN_CENTER,desc.c_str());
 
 }
 
@@ -473,7 +526,39 @@ al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_p
 al_draw_scaled_rotated_bitmap(asset->jet_texture[player->item.player_jet],23,23,
     window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
 
+
+
+/*########
+# PROMPT #
+########*/
+{
+for(std::vector<prompt_screen>::iterator prompt = level->prompt_q.begin(); prompt != level->prompt_q.end(); prompt++)
+{
+al_draw_filled_rectangle(prompt->body.x-prompt->body.width/2,prompt->body.y-prompt->body.height/2,prompt->body.x+prompt->body.width/2,prompt->body.y+prompt->body.height/2,al_map_rgb(27,27,17));
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x,prompt->body.y,ALLEGRO_ALIGN_CENTER,prompt->body.name.c_str());
+al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x,prompt->body.y,300,10,ALLEGRO_ALIGN_CENTER,prompt->body.desc.c_str());
 }
+}
+
+/*########
+## PAUSE #
+########*/
+
+
+if(level->pauseEngaged)
+{
+    draw_pause_screen(level,asset,alleg5);
+}
+
+
+}
+
+
+
+
+
+
+
 
 void zoom(asset_data * assets, short direction)
 {
@@ -603,17 +688,93 @@ void process_radar(LevelInst * level)
 
 }
 
-void prompt_screen(allegro5_data * alleg5, LevelInst * level) //to change level struct to universal prompt, use desc
+void render(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
+{
+    int window_width = al_get_display_width(alleg5->display);
+    int window_height = al_get_display_height(alleg5->display);
+    
+    al_draw_scaled_rotated_bitmap(asset->bkgr_texture[level->level_name],0,0,
+        window_width/2 - level->jet_q.front().curr.x * asset->scale_factor,window_height/2 - level->jet_q.front().curr.y * asset->scale_factor,asset->scale_factor,asset->scale_factor,0,0);
+
+        
+
+        draw(level,level->jet_q.begin(),asset,alleg5);
+        process_radar(level);
+        draw_ui(level,asset,alleg5);
+//debug
+        #ifdef DEBUG
+        debug_data(level,asset,alleg5->font);
+        #endif
+        al_flip_display();
+        al_clear_to_color(al_map_rgb(27,27,27));
+
+
+
+}
+
+void update_prompt_screen(allegro5_data * alleg5, LevelInst * level)
+{
+short num = 0;
+for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++ , num++)
+{
+    object->body.x = al_get_display_width(alleg5->display)/2 + 25*num;
+    object->body.y = al_get_display_height(alleg5->display)/2 + 15*num;
+}
+
+}
+
+
+void spawn_prompt_screen(asset_data * asset, allegro5_data * alleg5, LevelInst * level, unsigned short type) 
 {
 int display_width = al_get_display_width(alleg5->display);
 int display_height = al_get_display_height(alleg5->display); 
 
 
-box_string prompt = {.x = display_width/2, .y = display_height/2, .width = 400, .height = 150, .desc = "Press ENTER to continue"};
+for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->type == type) return;
 
-al_draw_filled_rectangle(prompt.x-prompt.width/2,prompt.y-prompt.height/2,prompt.x+prompt.width/2,prompt.y+prompt.height/2,al_map_rgb(27,27,17));
+std::string title;
+std::string desc;
+short decay;
+bool X_Action;
+bool Z_Action;
 
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),prompt.x,prompt.y,ALLEGRO_ALIGN_CENTER,prompt.desc.c_str());
+switch(type)
+{
+    case 0:
+    {
+        
+        if(asset->lvl_data[level->level_name].next_level != ENUM_BKGR_TYPE_FIN)
+        {
+            unsigned short rander = rand()%4;
+            switch(rander)
+            {
+                case 0: title = "Ready for more? You'd better be."; break;
+                case 1: title = "Don't let your guard down just jet."; break;
+                case 2: title = "Move on, more hostiles on the way."; break;
+                case 3: title = "Press enter when ready to proceed."; break;
+            }
+        }
+        else
+        {
+            title = "Mission accomplished. Return home.";
+        }
+        decay = 180;
+        X_Action = 0;
+        Z_Action = 0;
+    }
+    break;
+
+}
+if(X_Action) desc + "Press X to confirm"; //F podmień
+if(X_Action && Z_Action) desc + "\n";
+if(Z_Action) desc + "Press Z to deny";
+
+
+prompt_screen prompt = {.type=type,{.x = display_width/2 + 25 * level->prompt_q.size(), .y = display_height/2 + 15 * level->prompt_q.size(), .width = 400, .height = 150,.name = title, .desc = desc},.decay = decay, .X_Action = X_Action, .Z_Action = Z_Action};
+
+level->prompt_q.push_back(prompt);
+
+
 
 
 
@@ -628,7 +789,7 @@ int level(allegro5_data*alleg5, asset_data * assets, LevelInst * lvl)
 bool kill = 0;
 bool redraw = 1;
 
-bool finished = 0;
+
 
 ALLEGRO_MOUSE_STATE mouse;
 
@@ -638,7 +799,12 @@ while(!kill)
     al_wait_for_event(alleg5->queue,&alleg5->event);
     switch (alleg5->event.type)
     {
-        case ALLEGRO_EVENT_DISPLAY_RESIZE: al_acknowledge_resize(alleg5->display); break;
+        case ALLEGRO_EVENT_DISPLAY_RESIZE: 
+        {
+        al_acknowledge_resize(alleg5->display);
+        render(lvl,assets,alleg5);
+        }
+        break;
         case ALLEGRO_EVENT_DISPLAY_CLOSE: kill = 1; break;
         case ALLEGRO_EVENT_TIMER: redraw = 1; break;
         case ALLEGRO_EVENT_MOUSE_AXES:
@@ -660,19 +826,34 @@ while(!kill)
                 case ALLEGRO_KEY_SPACE:
                 lvl->jet_q.front().will_shoot[1] = 1;
                 break;
-                case ALLEGRO_KEY_ENTER:
-                if(finished) 
+                case ALLEGRO_KEY_X:
+                if(lvl->pauseEngaged)
                 {
-                    lvl->level_name = assets->lvl_data[lvl->level_name].next_level;
-                    return MISSION_INIT;
+                    al_resume_timer(alleg5->timer);
+
+
+                    if(lvl->level_name < ENUM_LVL_TYPE_FIN) return SELECTION;
+                    else return MISSION_INIT;
+                }
+                else if(lvl->prompt_q.back().X_Action) 
+                {
+                    
+                }
+                break;
+                case ALLEGRO_KEY_Z:
+                if(lvl->prompt_q.back().Z_Action)
+                {
+
                 }
                 break;
                 case ALLEGRO_KEY_ESCAPE:
-                if(lvl->level_name < ENUM_LVL_TYPE_FIN) 
-                { 
-                    if(!finished) return SELECTION;
-                }
-                else return MISSION_INIT;
+                    lvl->pauseEngaged = !lvl->pauseEngaged;
+                    if(lvl->pauseEngaged)
+                    {
+                        render(lvl,assets,alleg5);
+                        al_stop_timer(alleg5->timer);
+                    } 
+                    else al_resume_timer(alleg5->timer);
                 break;
                 case ALLEGRO_KEY_R:
                 {
@@ -738,22 +919,7 @@ while(!kill)
 
         collision(lvl,assets);
 //draw
-        //al_draw_bitmap(assets->bkgr_texture[lvl.level_name],window_width/2 - jet_q.front().x,window_height/2 - jet_q.front().y,0);
-        al_draw_scaled_rotated_bitmap(assets->bkgr_texture[lvl->level_name],0,0,
-        window_width/2 - lvl->jet_q.front().curr.x * assets->scale_factor,window_height/2 - lvl->jet_q.front().curr.y * assets->scale_factor,assets->scale_factor,assets->scale_factor,0,0);
-
-        
-
-        draw(lvl,lvl->jet_q.begin(),assets,alleg5);
-        process_radar(lvl);
-        draw_ui(lvl,assets,alleg5);
-        if(finished) prompt_screen(alleg5,lvl);
-//debug
-        #ifdef DEBUG
-        debug_data(lvl,assets,alleg5->font);
-        #endif
-        al_flip_display();
-        al_clear_to_color(al_map_rgb(27,27,27));
+        render(lvl,assets,alleg5);
         redraw = 0;
         garbage_collect(assets,lvl);
         cooldown(lvl->jet_q);
@@ -761,10 +927,20 @@ while(!kill)
 
         for(int i =1; i<3; i++) lvl->jet_q.front().will_shoot[i] = 0;
 
-        if(!alive_enemy_jets(lvl) && !finished)
+        if(!alive_enemy_jets(lvl) && !lvl->finalPromptEngaged)
         {
-            finished = 1;
-            //return MISSION_INIT;
+            lvl->finalPromptEngaged = true;
+            //spawn_prompt_screen(assets,alleg5,lvl,0);
+        }
+        if(lvl->finished)
+        {
+            if(assets->lvl_data[lvl->level_name].next_level != ENUM_BKGR_TYPE_FIN)
+            {
+            lvl->level_name = assets->lvl_data[lvl->level_name].next_level;
+            return MISSION_INIT;
+            }
+            else
+            return SELECTION;
         }
 
 

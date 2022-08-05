@@ -17,8 +17,10 @@ bool acceleratable;
 struct state_change_limit{
 struct state_change alter;
 float turn_rate;
-float speed_rate[2];
+float speed_rate[2]; //0 for brake action, 1 for acceleration
 float speed_limit[2];
+float default_speed;
+float mobility_coef;
 };
 struct selection{
 unsigned short player_jet;
@@ -48,6 +50,7 @@ bool at_work;
 bool status[ENUM_JET_STATUS_FIN];
 bool isBot;
 struct Ability * ability;
+struct state_change_limit * overwrite_limit;
 };
 
 
@@ -84,7 +87,7 @@ float gun_mult;
 float msl_mult;
 float spc_mult;
 struct state_change_limit alter_limit;
-float default_speed;
+
 float hitbox;
 bool isBoss;
 };

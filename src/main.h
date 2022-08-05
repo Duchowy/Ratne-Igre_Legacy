@@ -25,6 +25,7 @@ unsigned short MSAA;
 struct asset_data
 {
 float scale_factor;
+struct config_data config;
 ALLEGRO_BITMAP * bkgr_texture [ENUM_BKGR_TYPE_FIN];
 ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
 ALLEGRO_BITMAP * bullet_texture [ENUM_BULLET_TYPE_FIN][2];

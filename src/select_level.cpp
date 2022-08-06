@@ -94,7 +94,7 @@ if(prompt != nullptr)
 
     al_draw_text(alleg5->font,al_map_rgb(255,180,60),cam_x + prompt->x - prompt->width/2 +5, cam_y + prompt->y - prompt->height/2 +5, 0, prompt->name.c_str());
 
-    al_draw_multiline_text(alleg5->font,al_map_rgb(200,200,127),cam_x + prompt->x, cam_y + prompt->y - prompt->height/3,prompt->width-30,10, ALLEGRO_ALIGN_CENTER, prompt->desc.c_str());
+    al_draw_multiline_text(alleg5->font,al_map_rgb(200,200,127),cam_x + prompt->x, cam_y + prompt->y - prompt->height/3,prompt->width-30,12, ALLEGRO_ALIGN_CENTER, prompt->desc.c_str());
 
 }
 
@@ -154,9 +154,9 @@ std::array<node,ENUM_LVL_TYPE_FIN> node_array {{{1586,358,20,al_map_rgb(120,120,
 
 box_string lvl_select_prompt_data[ENUM_LVL_TYPE_FIN] = 
 {
-    {.x = node_array[0].x_pos, .y = node_array[0].y_pos,300,200, .name = "BERLIN", .desc = "Expect heavy resistance"  },
-    {.x = node_array[1].x_pos, .y = node_array[1].y_pos,300,200, .name = "INDIA", .desc = "Search & destroy"  },
-    {.x = node_array[2].x_pos, .y = node_array[2].y_pos,300,200,.name = "PFERD", .desc = "What?" }
+    {.x = node_array[0].x_pos, .y = node_array[0].y_pos,300,200, .name = "BERLIN", .desc = "Enemy forces were spotted operating in the area of former Berlin. Investigate, engage & shoot down anyone you encounter. Leave no one flying.\n\nIf they retreat, follow them up their den. Exterminate everyone."  },
+    {.x = node_array[1].x_pos, .y = node_array[1].y_pos,300,200, .name = "INDIA", .desc = "Hostile air force seeks to establish air superiority in the area of the Indian penninsula. Don't let that happen.\n\nYou should not fly too far away though, southern europe is not anymore under our control."  },
+    {.x = node_array[2].x_pos, .y = node_array[2].y_pos,300,200,.name = "PFERD", .desc = "Training area. A simulation of sort." }
     };
 
 box_string * prompt = (lvl_selected == ENUM_LVL_TYPE_FIN ? nullptr : lvl_select_prompt_data + lvl_selected);

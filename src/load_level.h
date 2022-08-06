@@ -11,11 +11,7 @@ unsigned short selection;
 
 
 
-
-
-
-
-int level_select(struct LevelInst *, struct asset_data *,allegro5_data*);
+int eq_select(struct LevelInst *, struct asset_data *,allegro5_data*);
 int spawn_level(struct asset_data * asset,struct LevelInst * level);
 void level_init(asset_data * asset);
 

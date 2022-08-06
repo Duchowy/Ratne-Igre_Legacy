@@ -2,6 +2,7 @@
 #include "level.h"
 #include "main.h"
 #include "load_level.h"
+#include "select_level.h"
 
 //#define TPS 30.0
 
@@ -37,7 +38,7 @@ if(!alleg5.display) return 0;
 bool kill = 0;
 asset_data * assets = new asset_data;
 texture_init(assets,1);
-struct LevelInst lvl = {.level_name = ENUM_BKGR_TYPE_FIN};
+struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN};
 jet_init(assets);
 abl_init(assets);
 boss_init(assets);
@@ -47,13 +48,14 @@ level_init(assets);
 bullet_init(assets);
 particle_init(assets);
 
-short state = SELECTION;
+short state = LVL_SELECTION;
 al_start_timer(alleg5.timer);
 while(!kill)
 {
     switch(state)
     {
-    case SELECTION: state = level_select(&lvl,assets,&alleg5); break;
+    case LVL_SELECTION: state = lvl_select(&lvl,assets,&alleg5); break;
+    case EQ_SELECTION: state = eq_select(&lvl,assets,&alleg5); break;
     case MISSION_INIT: state = spawn_level(assets,&lvl); break;
     case MISSION: state = level(&alleg5,assets,&lvl); break;
     case QUIT: kill = 1; break;
@@ -106,6 +108,9 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->msl_texture[RAD] = al_load_bitmap("texture/missile/radar.png");
         //particle
     lvl->prt_data[FLARE].texture = al_load_bitmap("texture/particle/flare.png");
+
+        //ui
+    lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
     }
     else
     {
@@ -125,6 +130,7 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->msl_texture[IR]);
         al_destroy_bitmap(lvl->msl_texture[RAD]);
         al_destroy_bitmap(lvl->prt_data[FLARE].texture);
+        al_destroy_bitmap(lvl->ui_texture[0]);
 
     }
 

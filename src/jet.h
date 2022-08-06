@@ -71,7 +71,7 @@ unsigned short type;
 struct state curr;
 short decay;
 unsigned int damage;
-int color[3];
+ALLEGRO_COLOR color;
 };
 
 struct Bullet{

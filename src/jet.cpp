@@ -3,6 +3,20 @@
 #include "main.h"
 
 
+BulInst spawn_bullet( unsigned short type, unsigned short gun_type, struct state * pos, struct asset_data * asset)
+{
+    BulInst object {
+        .type = type,
+        .curr = {.x = pos->x, .y = pos->y, .turn_angle = pos->turn_angle, .speed = asset->gun_data[gun_type].speed},
+        .decay = asset->bul_data[asset->gun_data[gun_type].ammo_type].decay,
+        .damage = asset->gun_data[gun_type].damage,
+    };
+
+    return object;
+}
+
+
+
 void shoot(struct LevelInst * level, struct asset_data * asset)
 {
 #pragma omp parallel for
@@ -33,26 +47,20 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != leve
 
     if(object->weap_ammo[0] > 0 && object->will_shoot[0] && !object->weap_delay[0] ) //bullet
     {
-        BulInst ap;
 
-        ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
-        ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
-        ap.curr.turn_angle=object->curr.turn_angle;
-        ap.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->gun_data[object->item.player_gun].spread - asset->gun_data[object->item.player_gun].spread;
+        BulInst projectile = spawn_bullet(asset->gun_data[object->item.player_gun].ammo_type,object->item.player_gun,&object->curr,asset);
 
 
-        ap.curr.speed = asset->gun_data[object->item.player_gun].speed;
-        ap.damage = asset->gun_data[object->item.player_gun].damage;
-        ap.type = asset->gun_data[object->item.player_gun].ammo_type;
-        ap.decay = asset->bul_data[asset->gun_data[object->item.player_gun].ammo_type].decay;
+        projectile.curr.x += cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
+        projectile.curr.y += sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
         #pragma omp critical
         {
-        ap.color[0] = rand()%20+230; //to be moved when random function changed
-        ap.color[1] = rand()%20+190;
-        ap.color[2] = rand()%10+30;
-        level->bullet_q.push_back(ap);
+            projectile.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->gun_data[object->item.player_gun].spread - asset->gun_data[object->item.player_gun].spread;
+            projectile.color = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+190)/255, .b = (float)(rand()%10+30)/255, .a = 1};
+            level->bullet_q.push_back(projectile);
         }
-        
+
+
 
         object->weap_delay[0] = asset->gun_data[object->item.player_gun].weap_delay;
         object->weap_ammo[0]--;
@@ -593,7 +601,7 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.mobility_coef = 1.0;
             data->jet_data[i].alter_limit.speed_limit[0] = 1.2;
             data->jet_data[i].alter_limit.default_speed = 1.9;
-            data->jet_data[i].alter_limit.speed_limit[1] = 2.2;
+            data->jet_data[i].alter_limit.speed_limit[1] = 2.3;
             data->jet_data[i].hp = 110;
             data->jet_data[i].hitbox = 6;
             data->jet_data[i].gun_mult = 1.1;

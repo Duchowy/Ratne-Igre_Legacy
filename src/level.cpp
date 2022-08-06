@@ -265,8 +265,8 @@ al_draw_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2
 std::string desc = "Press ESC to unpause.";
 
 
-if(level->level_name < ENUM_LVL_TYPE_FIN) desc += "\nPress X to exit to menu.";
-else desc += "\nPress X to reset mission.";
+if(level->level_name < ENUM_LVL_TYPE_FIN) desc += "\nPress F to exit to menu.";
+else desc += "\nPress F to reset mission.";
 al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2,400,10,ALLEGRO_ALIGN_CENTER,desc.c_str());
 
 }
@@ -357,7 +357,7 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
     for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++)
     {
         
-        ALLEGRO_COLOR col = al_map_rgba(object->color[0],object->color[1],object->color[2],255*object->decay / asset->bul_data[object->type].decay);
+        ALLEGRO_COLOR col = al_map_rgba_f(object->color.r,object->color.g,object->color.b,(float) object->decay / asset->bul_data[object->type].decay);
         al_draw_tinted_scaled_rotated_bitmap(asset->bullet_texture[object->type][1],col,23,23,
         asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
         asset->bul_data[object->type].height,asset->bul_data[object->type].width,object->curr.turn_angle,0);
@@ -735,7 +735,7 @@ for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); objec
 std::string title;
 std::string desc;
 short decay;
-bool X_Action;
+bool F_Action;
 bool Z_Action;
 
 switch(type)
@@ -751,7 +751,7 @@ switch(type)
                 case 0: title = "Ready for more? You'd better be."; break;
                 case 1: title = "Don't let your guard down just jet."; break;
                 case 2: title = "Move on, more hostiles on the way."; break;
-                case 3: title = "Press enter when ready to proceed."; break;
+                case 3: title = "Brave enough for more? Hostiles incoming!"; break;
             }
         }
         else
@@ -759,18 +759,18 @@ switch(type)
             title = "Mission accomplished. Return home.";
         }
         decay = 180;
-        X_Action = 0;
+        F_Action = 0;
         Z_Action = 0;
     }
     break;
 
 }
-if(X_Action) desc + "Press X to confirm"; //F podmień
-if(X_Action && Z_Action) desc + "\n";
+if(F_Action) desc + "Press F to confirm"; //F podmień
+if(F_Action && Z_Action) desc + "\n";
 if(Z_Action) desc + "Press Z to deny";
 
 
-prompt_screen prompt = {.type=type,{.x = display_width/2 + 25 * level->prompt_q.size(), .y = display_height/2 + 15 * level->prompt_q.size(), .width = 400, .height = 150,.name = title, .desc = desc},.decay = decay, .X_Action = X_Action, .Z_Action = Z_Action};
+prompt_screen prompt = {.type=type,{.x = display_width/2 + 25 * level->prompt_q.size(), .y = display_height/2 + 15 * level->prompt_q.size(), .width = 400, .height = 150,.name = title, .desc = desc},.decay = decay, .F_Action = F_Action, .Z_Action = Z_Action};
 
 level->prompt_q.push_back(prompt);
 
@@ -826,16 +826,16 @@ while(!kill)
                 case ALLEGRO_KEY_SPACE:
                 lvl->jet_q.front().will_shoot[1] = 1;
                 break;
-                case ALLEGRO_KEY_X:
+                case ALLEGRO_KEY_F:
                 if(lvl->pauseEngaged)
                 {
                     al_resume_timer(alleg5->timer);
 
 
-                    if(lvl->level_name < ENUM_LVL_TYPE_FIN) return SELECTION;
+                    if(lvl->level_name < ENUM_LVL_TYPE_FIN) return EQ_SELECTION;
                     else return MISSION_INIT;
                 }
-                else if(lvl->prompt_q.back().X_Action) 
+                else if(lvl->prompt_q.back().F_Action) 
                 {
                     
                 }
@@ -930,7 +930,7 @@ while(!kill)
         if(!alive_enemy_jets(lvl) && !lvl->finalPromptEngaged)
         {
             lvl->finalPromptEngaged = true;
-            //spawn_prompt_screen(assets,alleg5,lvl,0);
+            spawn_prompt_screen(assets,alleg5,lvl,0);
         }
         if(lvl->finished)
         {
@@ -940,7 +940,12 @@ while(!kill)
             return MISSION_INIT;
             }
             else
-            return SELECTION;
+            {
+                lvl->level_name = ENUM_LVL_TYPE_FIN;
+                return LVL_SELECTION;
+            }
+
+            
         }
 
 

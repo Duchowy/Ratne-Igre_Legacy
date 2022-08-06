@@ -47,14 +47,6 @@ struct ParticleInst{
 
 
 
-struct prompt_screen{
-unsigned short type;
-struct box_string body;
-short decay;
-bool X_Action;
-bool Z_Action;
-};
-
 
 
 struct LevelInst{

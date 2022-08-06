@@ -140,7 +140,7 @@ if(alt->rotatable)
                         
                     pos->turn_angle = angle_addition(pos->turn_angle,alt->turn_speed);
                 }
-                else //recently added
+                else
                 {
                 pos->turn_angle = target_angle;
                 alt->turn_speed = 0;

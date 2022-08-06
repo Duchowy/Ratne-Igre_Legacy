@@ -31,6 +31,7 @@ ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
 ALLEGRO_BITMAP * bullet_texture [ENUM_BULLET_TYPE_FIN][2];
 ALLEGRO_BITMAP * msl_texture [ENUM_MSL_TYPE_FIN];
 ALLEGRO_BITMAP * prt_texture[ENUM_PRT_TYPE_FIN];
+ALLEGRO_BITMAP * ui_texture[1];
 
 struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
 struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];

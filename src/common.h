@@ -45,4 +45,13 @@ struct box_string
     std::string desc;
 };
 
+
+struct prompt_screen{
+unsigned short type;
+struct box_string body;
+short decay;
+bool F_Action;
+bool Z_Action;
+};
+
 #endif

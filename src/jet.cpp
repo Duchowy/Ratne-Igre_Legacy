@@ -16,6 +16,42 @@ BulInst spawn_bullet( unsigned short type, unsigned short gun_type, struct state
 }
 
 
+ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * pos)
+{
+    ProjInst object {
+            .type = type,
+            .decay = gun->decay + gun->projectile->decay,
+            .damage = gun->damage + gun->projectile->damage,
+            .curr = {.x = pos->x, .y = pos->y, .turn_angle = pos->turn_angle, .speed = pos->speed + gun->velocity + gun->projectile->velocity },
+            .launcher = gun
+            
+        };
+
+
+    if(type < ENUM_BULLET_TYPE_FIN)
+    {
+        object.color = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+190)/255, .b = (float)(rand()%10+30)/255, .a = 1};
+        object.alter = nullptr;
+    }
+    else
+    {
+        object.color = {1,1,1,1};
+        object.alter = new state_change;
+        object.alter->acceleratable = 1;
+        object.alter->rotatable = 1;
+        object.alter->speed_mode = 2;
+        object.alter->turn_speed = 0;
+    }
+
+
+
+
+return object;
+}
+
+
+
+
 
 void shoot(struct LevelInst * level, struct asset_data * asset)
 {
@@ -438,6 +474,125 @@ for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++)
 ######## JET INITIALIZE #######
 ###############################
 #############################*/
+
+void launcher_init(struct asset_data * asset)
+{
+Launcher object[5]{
+{ //SHVAK
+.decay = 35,
+.damage = 45,
+.velocity = 1,
+.cooldown = 8,
+.ammo = 180,
+.magazine = 20,
+.spread = 0.05,
+.projectile = asset->proj_data
+},
+{ //ADEN
+.decay = 30,
+.damage = 15,
+.velocity = 1.5,
+.cooldown = 5,
+.ammo = 240,
+.magazine = 30,
+.spread = 0.075,
+.projectile = asset->proj_data
+},
+{ //GATLING
+.decay = 30,
+.damage = 2,
+.velocity = 1.75,
+.cooldown = 3,
+.ammo = 400,
+.magazine = 180,
+.spread = 0.03,
+.projectile = asset->proj_data
+},
+{ //Infrared
+.decay = 30,
+.damage = 0,
+.velocity = 0,
+.cooldown = 120,
+.ammo = 14,
+.magazine = 2,
+.spread = 0.03,
+.projectile = asset->proj_data+1
+},
+{ //Radar
+.decay = 30,
+.damage = 0,
+.velocity = 0,
+.cooldown = 120,
+.ammo = 10,
+.magazine = 1,
+.spread = 0.03,
+.projectile = asset->proj_data+2
+},
+
+
+};
+
+
+std::copy(object,object+5,asset->laun_data);
+
+}
+
+
+
+
+
+void projectile_init(struct asset_data * asset)
+{
+
+Projectile object[3] { 
+    
+    { //bullet
+        .decay = 60,
+        .damage = 20,
+        .velocity = 2,
+        .alter_limit = {
+            .alter = {.turn_speed = 0,.speed_mode = 1,.rotatable = 0, .acceleratable = 0},
+            .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
+            },
+        .radius = 0,
+        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0},
+    },
+    { //infrared
+        .decay = 100,
+        .damage = 100,
+        .velocity = 0,
+        .alter_limit = {
+            .alter = {.turn_speed = 0.025,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
+            .turn_rate = 0.005,.speed_rate = {0,0.2},.speed_limit = {0,6.5},1
+            },
+        .radius = 3,
+        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1},
+    },
+    { //radar
+        .decay = 150,
+        .damage = 100,
+        .velocity = 0,
+        .alter_limit = {
+            .alter = {.turn_speed = 0.03,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
+            .turn_rate = 0.006,.speed_rate = {0,0.2},.speed_limit = {0,5.5},1
+            },
+        .radius = 3,
+        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1},
+    },
+
+
+
+
+
+};
+
+
+std::copy(object,object+3,asset->proj_data);
+
+}
+
+
+
 
 void bullet_init(struct asset_data * lvl)
 {

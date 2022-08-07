@@ -36,9 +36,15 @@ ALLEGRO_BITMAP * ui_texture[1];
 struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
 struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];
 struct Jet jet_data[ENUM_BOSS_TYPE_FIN];
+
 struct Gun gun_data[ENUM_GUN_TYPE_FIN];
 struct Bullet bul_data[ENUM_BULLET_TYPE_FIN];
 struct Missile msl_data[ENUM_MSL_TYPE_FIN];
+
+struct Projectile proj_data[3];
+struct Launcher laun_data[4];
+
+
 struct Level lvl_data[ENUM_BKGR_TYPE_FIN];
 struct Particle prt_data[ENUM_PRT_TYPE_FIN];
 };

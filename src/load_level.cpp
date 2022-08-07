@@ -381,12 +381,12 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         }
         case PFERD:
         {
-        //int amnt[] = {2,0,0,2,0,0};
-        int amnt[] = {0,0,0,0,0,0};
+        int amnt[] = {2,0,0,2,0,0};
+        //int amnt[] = {0,0,0,0,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
-        asset->lvl_data[i].next_level = DNEPR;
+        asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         break;
         }
         case INDIA:
@@ -400,8 +400,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         }
         case DNEPR:
         {
-        //int amnt[] = {3,0,0,0,2,0};
-        int amnt[] = {0,0,0,0,0,0};
+        int amnt[] = {3,0,0,0,2,0};
+        //int amnt[] = {0,0,0,0,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);

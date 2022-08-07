@@ -22,6 +22,74 @@ float speed_limit[2];
 float default_speed;
 float mobility_coef;
 };
+
+
+
+
+
+struct Projectile
+{
+unsigned short decay;
+unsigned short damage;
+float velocity;
+state_change_limit alter_limit;
+float radius;
+struct
+{
+    float targeting_angle;
+    float draw_width;
+    float draw_height;
+    bool hitCircular; //if 0, in a 60 deg cone
+    bool isAOE;
+    bool DMGfall;
+} trait;
+};
+
+struct Launcher
+{
+unsigned short decay;
+unsigned short damage;
+float velocity;
+unsigned short cooldown;
+unsigned short ammo;
+unsigned short magazine;
+float spread;
+struct Projectile * projectile;
+};
+
+
+struct ProjInst
+{
+    unsigned short type;
+    unsigned short decay;
+    unsigned short damage;
+    struct state curr;
+    struct state_change * alter;
+    ALLEGRO_COLOR color;
+    struct Launcher * launcher;
+};
+
+struct LaunInst
+{
+    bool engaged;
+    unsigned short ammo;
+    unsigned short magazine;
+    unsigned short cooldown;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 struct selection{
 unsigned short player_jet;
 unsigned short player_gun;
@@ -52,7 +120,6 @@ bool isBot;
 struct Ability * ability;
 struct state_change_limit * overwrite_limit;
 };
-
 
 
 

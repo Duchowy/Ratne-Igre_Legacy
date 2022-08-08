@@ -38,14 +38,15 @@ if(!alleg5.display) return 0;
 bool kill = 0;
 asset_data * assets = new asset_data;
 texture_init(assets,1);
-struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN};
+struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}}}};
 jet_init(assets);
 abl_init(assets);
 boss_init(assets);
-gun_init(assets);
-msl_init(assets);
+projectile_init(assets);
+launcher_init(assets);
+
 level_init(assets);
-bullet_init(assets);
+
 particle_init(assets);
 
 short state = LVL_SELECTION;
@@ -93,9 +94,12 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->bkgr_texture[PFERD] = al_load_bitmap("texture/bkgr/pferd.png");
     lvl->bkgr_texture[DNEPR] = al_load_bitmap("texture/bkgr/dnepr.jpg");
     lvl->bkgr_texture[ATLANTIC] = al_load_bitmap("texture/bkgr/atlantic.jpg");
-        //bullet
-    lvl->bullet_texture[SLUG][0] = al_load_bitmap("texture/bullet/slug.png");
-    lvl->bullet_texture[SLUG][1] = al_load_bitmap("texture/bullet/slug_flare.png");
+        //projectile
+    lvl->proj_texture[SLUG] = al_load_bitmap("texture/bullet/slug.png");
+    lvl->proj_texture[AIRBURST] = al_load_bitmap("texture/bullet/airburst.png");
+    lvl->proj_texture[IR_M] = al_load_bitmap("texture/missile/infrared.png");
+    lvl->proj_texture[RAD_M] = al_load_bitmap("texture/missile/radar.png");
+
         //jet
     lvl->jet_texture[MIG21] = al_load_bitmap("texture/jet/mig21.png");
     lvl->jet_texture[F4] = al_load_bitmap("texture/jet/f4.png");
@@ -103,9 +107,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->jet_texture[HARRIER] = al_load_bitmap("texture/jet/harrier.png");
     lvl->jet_texture[MIG29] = al_load_bitmap("texture/jet/mig29.png");
     lvl->jet_texture[SR91] = al_load_bitmap("texture/jet/sr91.png");
-        //msl
-    lvl->msl_texture[IR] = al_load_bitmap("texture/missile/infrared.png");
-    lvl->msl_texture[RAD] = al_load_bitmap("texture/missile/radar.png");
+
         //particle
     lvl->prt_data[FLARE].texture = al_load_bitmap("texture/particle/flare.png");
 
@@ -119,16 +121,16 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->bkgr_texture[PFERD]);
         al_destroy_bitmap(lvl->bkgr_texture[DNEPR]);
         al_destroy_bitmap(lvl->bkgr_texture[ATLANTIC]);
-        al_destroy_bitmap(lvl->bullet_texture[SLUG][0]);
-        al_destroy_bitmap(lvl->bullet_texture[SLUG][1]);
+        al_destroy_bitmap(lvl->proj_texture[SLUG]);
+        al_destroy_bitmap(lvl->proj_texture[AIRBURST]);
+        al_destroy_bitmap(lvl->proj_texture[IR_M]);
+        al_destroy_bitmap(lvl->proj_texture[RAD_M]);
         al_destroy_bitmap(lvl->jet_texture[MIG21]);
         al_destroy_bitmap(lvl->jet_texture[F4]);
         al_destroy_bitmap(lvl->jet_texture[F104]);
         al_destroy_bitmap(lvl->jet_texture[HARRIER]);
         al_destroy_bitmap(lvl->jet_texture[MIG29]);
         al_destroy_bitmap(lvl->jet_texture[SR91]);
-        al_destroy_bitmap(lvl->msl_texture[IR]);
-        al_destroy_bitmap(lvl->msl_texture[RAD]);
         al_destroy_bitmap(lvl->prt_data[FLARE].texture);
         al_destroy_bitmap(lvl->ui_texture[0]);
 

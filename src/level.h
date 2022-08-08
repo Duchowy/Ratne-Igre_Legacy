@@ -47,19 +47,39 @@ struct ParticleInst{
 
 
 
+struct riven
+{
+bool engaged;
+bool dualSided;
+unsigned short type[4];
+float value[4];
+};
+
+
+
+
+struct Player_Data
+{
+struct selection choice;
+struct state_change_limit * custom_stat[ENUM_JET_TYPE_FIN];
+struct riven mod[ENUM_JET_TYPE_FIN];
+};
+
+
+
 
 
 struct LevelInst{
 unsigned short level_name;
 unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
-std::vector<BulInst> bullet_q;
 std::vector<JetInst> jet_q;
-std::vector<MslInst> msl_q;
+std::vector<ProjInst> proj_q;
 std::vector<ParticleInst> prt_q;
 std::vector<prompt_screen> prompt_q;
 float scale;
 struct RadarInst radar;
-struct JetInst player;
+struct Player_Data player;
+short tick;
 bool pauseEngaged;
 bool finished;
 bool finalPromptEngaged;

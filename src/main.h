@@ -28,8 +28,7 @@ float scale_factor;
 struct config_data config;
 ALLEGRO_BITMAP * bkgr_texture [ENUM_BKGR_TYPE_FIN];
 ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
-ALLEGRO_BITMAP * bullet_texture [ENUM_BULLET_TYPE_FIN][2];
-ALLEGRO_BITMAP * msl_texture [ENUM_MSL_TYPE_FIN];
+ALLEGRO_BITMAP * proj_texture [ENUM_PROJECTILE_TYPE_FIN];
 ALLEGRO_BITMAP * prt_texture[ENUM_PRT_TYPE_FIN];
 ALLEGRO_BITMAP * ui_texture[1];
 
@@ -37,12 +36,10 @@ struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
 struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];
 struct Jet jet_data[ENUM_BOSS_TYPE_FIN];
 
-struct Gun gun_data[ENUM_GUN_TYPE_FIN];
-struct Bullet bul_data[ENUM_BULLET_TYPE_FIN];
-struct Missile msl_data[ENUM_MSL_TYPE_FIN];
 
-struct Projectile proj_data[3];
-struct Launcher laun_data[4];
+
+struct Projectile proj_data[ENUM_PROJECTILE_TYPE_FIN];
+struct Launcher laun_data[ENUM_LAUNCHER_TYPE_FIN];
 
 
 struct Level lvl_data[ENUM_BKGR_TYPE_FIN];

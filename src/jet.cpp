@@ -3,18 +3,6 @@
 #include "main.h"
 
 
-BulInst spawn_bullet( unsigned short type, unsigned short gun_type, struct state * pos, struct asset_data * asset)
-{
-    BulInst object {
-        .type = type,
-        .curr = {.x = pos->x, .y = pos->y, .turn_angle = pos->turn_angle, .speed = asset->gun_data[gun_type].speed},
-        .decay = asset->bul_data[asset->gun_data[gun_type].ammo_type].decay,
-        .damage = asset->gun_data[gun_type].damage,
-    };
-
-    return object;
-}
-
 
 ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * pos)
 {
@@ -23,8 +11,8 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
             .decay = gun->decay + gun->projectile->decay,
             .damage = gun->damage + gun->projectile->damage,
             .curr = {.x = pos->x, .y = pos->y, .turn_angle = pos->turn_angle, .speed = pos->speed + gun->velocity + gun->projectile->velocity },
+            .status = {0},
             .launcher = gun
-            
         };
 
 
@@ -39,6 +27,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
         object.alter = new state_change;
         object.alter->acceleratable = 1;
         object.alter->rotatable = 1;
+        object.alter->target_angle = object.curr.turn_angle;
         object.alter->speed_mode = 2;
         object.alter->turn_speed = 0;
     }
@@ -55,54 +44,39 @@ return object;
 
 void shoot(struct LevelInst * level, struct asset_data * asset)
 {
-#pragma omp parallel for
-for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
-{
-    if(object->weap_ammo[1] > 0 && object->will_shoot[1] && !object->weap_delay[1]) //missile
+    for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
     {
-        
-        MslInst ap;
-        ap.alter.acceleratable = 1;
-        ap.alter.rotatable = 1;
-        ap.type = object->item.player_msl;
-        ap.curr.speed = object->curr.speed;
-        ap.curr.turn_angle = ap.target_angle = object->curr.turn_angle;
-        ap.alter.turn_speed = 0.;
-        ap.alter.speed_mode = 2;
-        ap.curr.x=object->curr.x + cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
-        ap.curr.y=object->curr.y + sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox + asset->msl_data[ap.type].radius + 0.5);
-        ap.decay = asset->msl_data[ap.type].decay;
-        for(int i = 0; i< ENUM_MSL_STATUS_FIN;i++) ap.status[i] = 0;
-        ap.isBotLaunched = object->isBot;
-        #pragma omp critical
-        level->msl_q.push_back(ap);
-        object->weap_delay[1] = 120;
-        object->weap_ammo[1]--;
+        for(int i = 0; i<3; i++)
+        {
+            if(object->weapon[i].ammo && object->weapon[i].magazine && object->weapon[i].engaged && !object->weapon[i].cooldown)
+            {
+                ProjInst shell = spawn_projectile(object->weapon[i].launcher->projectile - asset->proj_data,object->weapon[i].launcher,&object->curr);
+                if(shell.type >= ENUM_BULLET_TYPE_FIN)
+                {
+                    shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].radius + 0.5);
+                    shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].radius + 0.5);
+                    shell.isBotLaunched = object->isBot;
+                }
+                else
+                {
+                    shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;
+
+
+                }
+
+
+                level->proj_q.push_back(shell);
+                object->weapon[i].ammo-=1;
+                object->weapon[i].magazine -=1;
+                object->weapon[i].cooldown = object->weapon[i].launcher->cooldown;
+                object->weapon[i].replenish_cooldown = object->weapon[i].launcher->replenish_cooldown;
+            }
+
+
+        }
     }
     
-
-    if(object->weap_ammo[0] > 0 && object->will_shoot[0] && !object->weap_delay[0] ) //bullet
-    {
-
-        BulInst projectile = spawn_bullet(asset->gun_data[object->item.player_gun].ammo_type,object->item.player_gun,&object->curr,asset);
-
-
-        projectile.curr.x += cos(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
-        projectile.curr.y += sin(object->curr.turn_angle)*(asset->jet_data[object->item.player_jet].hitbox+0.5);
-        #pragma omp critical
-        {
-            projectile.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->gun_data[object->item.player_gun].spread - asset->gun_data[object->item.player_gun].spread;
-            projectile.color = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+190)/255, .b = (float)(rand()%10+30)/255, .a = 1};
-            level->bullet_q.push_back(projectile);
-        }
-
-
-
-        object->weap_delay[0] = asset->gun_data[object->item.player_gun].weap_delay;
-        object->weap_ammo[0]--;
-    }
-
-}
+    
 }
 
 void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target,float offset)
@@ -117,10 +91,10 @@ object->target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - obj
 void target(struct LevelInst * level, struct asset_data * asset)
 {
 #pragma omp parallel for
-for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level->msl_q.end(); shell++)
+for(std::vector<ProjInst>::iterator shell = level->proj_q.begin(); shell != level->proj_q.end(); shell++)
 {
-    if(shell->status[CONTROLLED] == 1) continue;
-    float new_target = shell->target_angle;
+    if(shell->status[CONTROLLED] == 1 || asset->proj_data[shell->type].trait.targeting_angle == 0.) continue;
+    float new_target = shell->alter->target_angle;
     float min_deviation = 2*PI;
     //float aot = 0;
 
@@ -131,10 +105,10 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
         float deviation = fabs(angle_difference(shell->curr.turn_angle,new_angle));
         switch(shell->type)
         {
-            case IR:
+            case IR_M: 
             {
             float angle_of_attack = fabs(angle_difference(shell->curr.turn_angle,target->curr.turn_angle)) ;
-            if( angle_of_attack < PI/2  &&  distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle )
+            if( angle_of_attack < PI/2  &&  distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle )
             {
                 
 
@@ -147,9 +121,9 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
             }
             }
             break;
-            case RAD:
+            case RAD_M:
             {
-                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->msl_data[shell->type].targeting_angle && shell->isBotLaunched != target->isBot)
+                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle && shell->isBotLaunched != target->isBot)
                 {
                     
 
@@ -164,7 +138,7 @@ for(std::vector<MslInst>::iterator shell = level->msl_q.begin(); shell != level-
             break;
         }
     }//eof jet iteration
-    shell->target_angle = new_target;
+    shell->alter->target_angle = new_target;
 }
 
 
@@ -176,7 +150,7 @@ std::vector<JetInst>::iterator player = level->jet_q.begin();
 //#pragma omp parallel for //blocked by rand
 for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
 {
-for(int i =0; i< 3; i++) object->will_shoot[i] = 0;
+for(int i =0; i< 3; i++) object->weapon[i].engaged = 0;
 switch(object->mode)
 {
     case PATROL:
@@ -189,7 +163,7 @@ switch(object->mode)
         }
         else
         { 
-            float r = object->curr.speed/asset->jet_data[object->item.player_jet].alter_limit.alter.turn_speed;
+            float r = object->curr.speed/asset->jet_data[object->type].alter_limit.alter.turn_speed;
             if(object->curr.x <= 3*r || object->curr.x >= asset->lvl_data[level->level_name].map_width - 3*r || object->curr.y <= 3*r || object->curr.y >= asset->lvl_data[level->level_name].map_height-3*r)
             {
                 int target_c[2] = {0,0};
@@ -209,15 +183,15 @@ switch(object->mode)
     case PURSUIT:
     {
         target(object,player,16);
-        if(fabs(rad_distance(object,player)) < asset->gun_data[object->item.player_gun].spread) 
+        if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
         {
-            if(asset->jet_data[object->item.player_jet].isBoss)
+            if(asset->jet_data[object->type].isBoss)
             {
-                if(rand()%100 == 0 && distance(object,player) < asset->msl_data[object->item.player_msl].decay * asset->msl_data[object->item.player_msl].alter_limit.speed_limit[1] ) object->will_shoot[1] = 1; //boss launch missile
+                if(rand()%100 == 0 && distance(object,player) < (asset->proj_data[object->weapon[1].type].decay + asset->laun_data[object->weapon[1].type].decay) * asset->proj_data[object->weapon[1].type].alter_limit.speed_limit[1] ) object->weapon[1].engaged = 1; //boss launch missile
             }
             else
             {
-                if(rand()%600 == 0) object->will_shoot[1] = 1; //launch missile
+                if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
             }
 
             
@@ -231,7 +205,7 @@ switch(object->mode)
     {
         target(object,level->jet_q.begin(),8);
         float rad_dist = angle_difference(object->curr.turn_angle,object->target_angle); //radial distance between object and target
-        if(fabs(rad_dist) < asset->gun_data[object->item.player_gun].spread )  object->will_shoot[0] = 1; //gun
+        if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
         if(fabs(rad_dist) > PI/2)
         {
             if(object->curr.speed > player->curr.speed) object->alter.speed_mode = AFTERBURNER;
@@ -265,11 +239,11 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     float dist = distance(object,player);
 
     bool triggered = 0;
-    if(limit->jet_data[object->item.player_jet].isBoss)
+    if(limit->jet_data[object->type].isBoss)
     {
         triggered = 1;
         if(
-            limit->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::DASH] &&
+            limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::DASH] &&
             object->ability[BOSS_ABILITY::DASH].cooldown == 0 &&
             (
             (dist > 350 && fabs(rad_distance(object,player)) < PI/6) || (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
@@ -281,7 +255,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         };
 
         if(
-            limit->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
+            limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
             object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
             (dist < 350 && dist > 150 && fabs(rad_distance(object,player)) > 3*PI/5)
         )
@@ -300,7 +274,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         {
             triggered = 1;
         }
-        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->item.player_jet].hp)) * 120 ))
+        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120 ))
         {
             triggered = 1;
         }
@@ -359,45 +333,50 @@ if(input_vec.size() > 1)
 
 }
 
+LaunInst launcher_spawn(Jet * jet, Launcher * launcher, unsigned short type, unsigned short slot)
+{
+LaunInst object {
+.engaged = 0,
+.type = type,
+.ammo = jet->weapon_mult[slot] * launcher->ammo,
+.magazine = launcher->magazine,
+.cooldown = 0,
+.replenish_cooldown = 0,
+.launcher = launcher
+};
+return object;
+
+
+}
+
+
+
 
 JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot)
 {
-    JetInst object;
-    object.item = *selected;
-    object.hp = asset->jet_data[selected->player_jet].hp;
-    if(bot)
-    {
-        if(rand()%2) object.curr.turn_angle = (float)rand()/(RAND_MAX) *1.8 + 1;
-        else object.curr.turn_angle = (float)rand()/(RAND_MAX) *(-1.8) - 1.2;
-       
-    }
-    else
-    {
-        object.curr.turn_angle = 0.0;
+    JetInst object = {
+        .type = selected->player_jet,
+        .hp = asset->jet_data[selected->player_jet].hp,
+        .curr = {.x = -1, 
+                    .y = -1, 
+                    .turn_angle = (bot ? PI/2 : 0),
+                    .speed = asset->jet_data[selected->player_jet].alter_limit.default_speed},
+        .alter = {
+                .turn_speed = 0.,
+                .speed_mode = STANDARD,
+                .target_angle = (bot ?  ( rand()%2 ?   (float)rand()/(RAND_MAX) *1.8 + 1 : (float)rand()/(RAND_MAX) *(-1.8) - 1.2    )    :  0.0     ),
+                .rotatable = true,
+                .acceleratable = true
+        },
+        .mode = STANDARD,
+        .at_work = false,
+        .status = {0,0},
+        .isBot = bot,
+        .ability = nullptr,
+        .overwrite_limit = nullptr
+    };
 
-    }
-    object.target_angle = object.curr.turn_angle;
-    object.alter.speed_mode = STANDARD;
-    object.alter.turn_speed = 0.;
-    object.curr.speed = asset->jet_data[selected->player_jet].alter_limit.default_speed;
-    object.at_work = 0;
-    object.weap_ammo[0] = (float) asset->jet_data[selected->player_jet].gun_mult * asset->gun_data[selected->player_gun].ammo_max;
-    object.weap_ammo[1] = (float) asset->jet_data[selected->player_jet].msl_mult * asset->msl_data[selected->player_msl].ammo_max;
-    object.curr.x = -1;
-    object.curr.y = -1;
-    object.alter.acceleratable = 1;
-    object.alter.rotatable = 1;
-    object.ability = nullptr;
-    object.isBot = bot;
-    object.overwrite_limit = nullptr;
-
-
-    for(int i =0; i < 3; i++) object.will_shoot[i] = 0;
-    for(int i =0; i < 3; i++) object.weap_delay[i] = 0;
-
-    for(int i = 0; i< ENUM_JET_STATUS_FIN;i++) object.status[i] = 0;
-
-
+    for(int i = 0; i<3; i++) object.weapon[i] = launcher_spawn(&asset->jet_data[selected->player_jet],&asset->laun_data[selected->weapon[i]],selected->weapon[i],i);
     return object;
 }
 
@@ -412,12 +391,12 @@ for(int i = 0; i<ENUM_BOSS_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level
 float x = (float) map_width*0.7, y = (float) map_height/(enemy_amount+1);
 
 struct selection templat[ENUM_BOSS_TYPE_FIN] = {
-{.player_jet = MIG21,.player_gun=SHVAK,.player_msl=IR},
-{.player_jet = F4, .player_gun = GATLING, .player_msl = RAD},
-{.player_jet = F104, .player_gun = GATLING, .player_msl = IR},
-{.player_jet = HARRIER, .player_gun = ADEN, .player_msl = IR},
-{.player_jet = MIG29, .player_gun = SHVAK, .player_msl = RAD},
-{.player_jet = SR91, .player_gun = GATLING, .player_msl = RAD}
+{.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK} },
+{.player_jet = F4, .weapon= {GATLING,RADAR,FLAK}},
+{.player_jet = F104, .weapon= {GATLING,INFRARED,FLAK}},
+{.player_jet = HARRIER, .weapon= {ADEN,INFRARED,FLAK}},
+{.player_jet = MIG29, .weapon= {SHVAK,RADAR,FLAK}},
+{.player_jet = SR91, .weapon= {GATLING,RADAR,FLAK}}
 };
 
 
@@ -477,63 +456,79 @@ for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++)
 
 void launcher_init(struct asset_data * asset)
 {
-Launcher object[5]{
+Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
 { //SHVAK
 .decay = 35,
 .damage = 45,
 .velocity = 1,
 .cooldown = 8,
+.replenish_cooldown = 14,
 .ammo = 180,
-.magazine = 20,
+.magazine = 25,
 .spread = 0.05,
-.projectile = asset->proj_data
+.projectile = asset->proj_data + SLUG
 },
 { //ADEN
 .decay = 30,
 .damage = 15,
 .velocity = 1.5,
 .cooldown = 5,
+.replenish_cooldown = 16,
 .ammo = 240,
-.magazine = 30,
+.magazine = 40,
 .spread = 0.075,
-.projectile = asset->proj_data
+.projectile = asset->proj_data + SLUG
 },
 { //GATLING
 .decay = 30,
 .damage = 2,
 .velocity = 1.75,
 .cooldown = 3,
+.replenish_cooldown = 18,
 .ammo = 400,
 .magazine = 180,
 .spread = 0.03,
-.projectile = asset->proj_data
+.projectile = asset->proj_data + SLUG
 },
 { //Infrared
 .decay = 30,
 .damage = 0,
 .velocity = 0,
-.cooldown = 120,
+.cooldown = 60,
+.replenish_cooldown = 120,
 .ammo = 14,
 .magazine = 2,
 .spread = 0.03,
-.projectile = asset->proj_data+1
+.projectile = asset->proj_data + IR_M
 },
 { //Radar
 .decay = 30,
 .damage = 0,
 .velocity = 0,
 .cooldown = 120,
+.replenish_cooldown = 120,
 .ammo = 10,
 .magazine = 1,
 .spread = 0.03,
-.projectile = asset->proj_data+2
+.projectile = asset->proj_data + RAD_M
+},
+{ //FLAK
+.decay = 35,
+.damage = 45,
+.velocity = 1.75,
+.cooldown = 15,
+.replenish_cooldown = 20,
+.ammo = 30,
+.magazine = 5,
+.spread = 0.05,
+.projectile = asset->proj_data + AIRBURST
 },
 
 
 };
 
 
-std::copy(object,object+5,asset->laun_data);
+std::copy(object,object+ENUM_LAUNCHER_TYPE_FIN,asset->laun_data);
 
 }
 
@@ -544,7 +539,7 @@ std::copy(object,object+5,asset->laun_data);
 void projectile_init(struct asset_data * asset)
 {
 
-Projectile object[3] { 
+Projectile object[ENUM_PROJECTILE_TYPE_FIN] { 
     
     { //bullet
         .decay = 60,
@@ -555,7 +550,18 @@ Projectile object[3] {
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
         .radius = 0,
-        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0},
+        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1},
+    },
+    { //airburst
+        .decay = 60,
+        .damage = 40,
+        .velocity = 2,
+        .alter_limit = {
+            .alter = {.turn_speed = 0,.speed_mode = 1,.rotatable = 0, .acceleratable = 0},
+            .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
+            },
+        .radius = 24,
+        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 0, .isAOE = 1, .DMGfall = 0},
     },
     { //infrared
         .decay = 100,
@@ -566,7 +572,7 @@ Projectile object[3] {
             .turn_rate = 0.005,.speed_rate = {0,0.2},.speed_limit = {0,6.5},1
             },
         .radius = 3,
-        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1},
+        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },
     { //radar
         .decay = 150,
@@ -577,7 +583,7 @@ Projectile object[3] {
             .turn_rate = 0.006,.speed_rate = {0,0.2},.speed_limit = {0,5.5},1
             },
         .radius = 3,
-        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1},
+        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },
 
 
@@ -587,105 +593,11 @@ Projectile object[3] {
 };
 
 
-std::copy(object,object+3,asset->proj_data);
+std::copy(object,object+ENUM_PROJECTILE_TYPE_FIN,asset->proj_data);
 
 }
 
 
-
-
-void bullet_init(struct asset_data * lvl)
-{
-    for(int i = 0; i< ENUM_BULLET_TYPE_FIN;i++)
-    {
-        switch (i)
-        {
-            case SLUG:
-            {
-                lvl->bul_data[i].decay = 90;
-                lvl->bul_data[i].width = 0.7;
-                lvl->bul_data[i].height = 1.2;
-                break;
-            }
-        
-        }
-    }
-        
-}
-
-void gun_init(struct asset_data * lvl)
-{
-for(int i =0; i< ENUM_GUN_TYPE_FIN; i++)
-{
-      switch (i)
-        {
-        case SHVAK:
-        {
-            lvl->gun_data[i].damage = 60;
-            lvl->gun_data[i].ammo_max = 180;
-            lvl->gun_data[i].ammo_type = SLUG;
-            lvl->gun_data[i].weap_delay = 8;
-            lvl->gun_data[i].spread = 0.05;
-            lvl->gun_data[i].speed = 6.25;
-            break;
-        }
-        case ADEN:
-        {
-            lvl->gun_data[i].damage = 35;
-            lvl->gun_data[i].ammo_max = 240;
-            lvl->gun_data[i].ammo_type = SLUG;
-            lvl->gun_data[i].weap_delay = 5;
-            lvl->gun_data[i].spread = 0.075;
-            lvl->gun_data[i].speed = 6.75;
-            break;
-        }
-        case GATLING:
-        {
-            lvl->gun_data[i].damage = 22;
-            lvl->gun_data[i].ammo_max = 400;
-            lvl->gun_data[i].ammo_type = SLUG;
-            lvl->gun_data[i].weap_delay = 3;
-            lvl->gun_data[i].spread = 0.03;
-            lvl->gun_data[i].speed = 7.75;
-            break;
-        }
-
-
-    }
-}
-}
-
-void msl_init(struct asset_data * lvl)
-{
-for(int i =0; i< ENUM_MSL_TYPE_FIN; i++)
-{
-      switch (i)
-        {
-            case IR:
-            lvl->msl_data[i].alter_limit.turn_rate = 0.005;
-            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.025;
-            lvl->msl_data[i].alter_limit.speed_limit[1] = 6.5;
-            lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
-            lvl->msl_data[i].radius = 3;
-            lvl->msl_data[i].targeting_angle = 1;
-            lvl->msl_data[i].damage = 100;
-            lvl->msl_data[i].ammo_max = 14;
-            lvl->msl_data[i].decay = 130;
-            break;
-            case RAD:
-            lvl->msl_data[i].alter_limit.turn_rate = 0.006;
-            lvl->msl_data[i].alter_limit.alter.turn_speed = 0.03;
-            lvl->msl_data[i].alter_limit.speed_limit[1] = 5.5;
-            lvl->msl_data[i].alter_limit.speed_rate[1] = 0.2;
-            lvl->msl_data[i].radius = 3;
-            lvl->msl_data[i].targeting_angle = 0.7;
-            lvl->msl_data[i].damage = 100;
-            lvl->msl_data[i].ammo_max = 10;
-            lvl->msl_data[i].decay = 180;
-            break;
-        }
-}
-}
 
 void jet_init(struct asset_data * data)
 {
@@ -705,9 +617,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_limit[1] = 2.9;
             data->jet_data[i].hp = 100;
             data->jet_data[i].hitbox = 6;
-            data->jet_data[i].gun_mult = 0.8;
-            data->jet_data[i].msl_mult = 1;
-            data->jet_data[i].spc_mult = 0.9;
+            data->jet_data[i].weapon_mult[0] = 0.8;
+            data->jet_data[i].weapon_mult[1] = 1;
+            data->jet_data[i].weapon_mult[2] = 0.9;
             data->jet_data[i].isBoss = 0;
             break;
             }
@@ -723,9 +635,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0075;
             data->jet_data[i].hp = 110;
             data->jet_data[i].hitbox = 6;
-            data->jet_data[i].gun_mult = 1.1;
-            data->jet_data[i].msl_mult = 1.1;
-            data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].weapon_mult[0] = 1.1;
+            data->jet_data[i].weapon_mult[1] = 1.1;
+            data->jet_data[i].weapon_mult[2] = 1.1;
             data->jet_data[i].isBoss = 0;
             break;
             }
@@ -741,9 +653,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
             data->jet_data[i].hp = 90;
             data->jet_data[i].hitbox = 5;
-            data->jet_data[i].gun_mult = 1;
-            data->jet_data[i].msl_mult = 0.8;
-            data->jet_data[i].spc_mult = 0.8;
+            data->jet_data[i].weapon_mult[0] = 1;
+            data->jet_data[i].weapon_mult[1] = 0.8;
+            data->jet_data[i].weapon_mult[2] = 0.8;
             data->jet_data[i].isBoss = 0;
             break;
             }
@@ -759,9 +671,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_limit[1] = 2.3;
             data->jet_data[i].hp = 110;
             data->jet_data[i].hitbox = 6;
-            data->jet_data[i].gun_mult = 1.1;
-            data->jet_data[i].msl_mult = 1.4;
-            data->jet_data[i].spc_mult = 1.4;
+            data->jet_data[i].weapon_mult[0] = 1.1;
+            data->jet_data[i].weapon_mult[1] = 1.4;
+            data->jet_data[i].weapon_mult[2] = 1.4;
             data->jet_data[i].isBoss = 0;
             break;
             }
@@ -777,9 +689,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0095;
             data->jet_data[i].hp = 250;
             data->jet_data[i].hitbox = 6;
-            data->jet_data[i].gun_mult = 0.8;
-            data->jet_data[i].msl_mult = 1.1;
-            data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].weapon_mult[0] = 0.8;
+            data->jet_data[i].weapon_mult[1] = 1.1;
+            data->jet_data[i].weapon_mult[2] = 1.1;
             data->jet_data[i].isBoss = 1;
             break;
             }
@@ -795,9 +707,9 @@ void jet_init(struct asset_data * data)
             data->jet_data[i].alter_limit.speed_rate[1] = 0.0085;
             data->jet_data[i].hp = 300;
             data->jet_data[i].hitbox = 6;
-            data->jet_data[i].gun_mult = 1.1;
-            data->jet_data[i].msl_mult = 1.1;
-            data->jet_data[i].spc_mult = 1.1;
+            data->jet_data[i].weapon_mult[0] = 1.1;
+            data->jet_data[i].weapon_mult[1] = 1.1;
+            data->jet_data[i].weapon_mult[2] = 1.1;
             data->jet_data[i].isBoss = 1;
             break;
             }

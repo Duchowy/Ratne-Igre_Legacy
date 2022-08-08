@@ -170,20 +170,19 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     for(std::vector<JetInst>::iterator object = data->jet_q.begin(); object != data->jet_q.end(); object++)
     {
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
-        advance(&object->curr,&object->alter, &asset->jet_data[object->item.player_jet].alter_limit, object->target_angle,ADVANCED);
+        advance(&object->curr,&object->alter, &asset->jet_data[object->type].alter_limit, object->target_angle,ADVANCED);
     }
+
     #pragma omp parallel for
-    for(std::vector<MslInst>::iterator object = data->msl_q.begin(); object != data->msl_q.end(); object++)
+    for(std::vector<ProjInst>::iterator object = data->proj_q.begin(); object != data->proj_q.end(); object++)
     {
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
-        advance(&object->curr,&object->alter,&asset->msl_data[object->type].alter_limit,object->target_angle,SIMPLIFIED);
+        if(object->alter) advance(&object->curr,object->alter,&asset->proj_data[object->type].alter_limit,object->alter->target_angle,SIMPLIFIED);
 
     }
-    #pragma omp parallel for
-    for(std::vector<BulInst>::iterator object = data->bullet_q.begin(); object != data->bullet_q.end(); object++)
-    {
-        move(&object->curr, asset->lvl_data[data->level_name].map_width, asset->lvl_data[data->level_name].map_height,1);
-    }
+
+    
+
     #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = data->prt_q.begin(); object != data->prt_q.end(); object++)
     {

@@ -2,6 +2,7 @@
 #include "level.h"
 #include "main.h"
 #include "movement.h"
+#include "render_level.h"
 
 
 
@@ -15,11 +16,11 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FON
             switch(i)
             {
                 case 0: buffer = std::to_string(object->alter.turn_speed); break;
-                case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
+                //case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
                 case 2: buffer = std::to_string(object->target_angle)+" target"; break;
                 case 3: buffer = std::to_string(object->alter.turn_speed)+" turn speed"; break;
                 case 4: buffer = std::to_string(object->curr.speed)+" speed"; break;
-                case 5: buffer = std::to_string(object->will_shoot[0])+" shoot"; break;
+                case 5: buffer = std::to_string(object->weapon[0].engaged)+" shoot"; break;
             }
             al_draw_text(font,al_map_rgb(240,0,240),0,i*10,0,buffer.c_str());
         }
@@ -54,7 +55,8 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
 {
     for(int i =0;  i<3; i++) //gun cooldown
     {
-        if(object->weap_delay[i]) object->weap_delay[i]--;
+        if(object->weapon[i].cooldown) object->weapon[i].cooldown--;
+        if(object->weapon[i].replenish_cooldown) object->weapon[i].replenish_cooldown--;
     }
     if(object->ability)
     {
@@ -73,14 +75,37 @@ for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_v
 void decay(struct LevelInst * level, struct asset_data * asset)
 {
     #pragma omp parallel for
-    for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++) object->decay--;
-    for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++) object->decay--;
+    for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++) object->decay = (object->decay - 1 > 0 ? object->decay - 1 : 0);
     #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
     for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++) object->decay--;
     for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->decay >= 0) object->decay--;
 
 }
+
+void replenish(asset_data * asset, LevelInst * level)
+{
+#pragma omp parallel for
+for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
+{
+    for(int i =0;  i<3; i++)
+    {
+        if(!object->weapon[i].replenish_cooldown && object->weapon[i].magazine < object->weapon[i].launcher->magazine && object->weapon[i].magazine < object->weapon[i].ammo)
+        {
+            object->weapon[i].magazine += 1;
+            object->weapon[i].replenish_cooldown = object->weapon[i].launcher->replenish_cooldown;
+        }
+    }
+
+
+}
+
+
+}
+
+
+
+
 
 
 void garbage_collect(asset_data * asset, LevelInst * level)
@@ -91,28 +116,25 @@ void garbage_collect(asset_data * asset, LevelInst * level)
     {
     if(object->hp <= 0) 
     {
-        level->enemy_quality[object->item.player_jet]--;
+        level->enemy_quality[object->type]--;
         if(object->ability) delete object->ability;
         level->jet_q.erase(object);
         object--;
     }
     }
-    for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++)
+
+    for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++)
     {
-    if(object->decay <= 0) 
+    if(object->decay == 0) 
         {
-            level->bullet_q.erase(object);
+            if(object->alter) delete object->alter;
+            level->proj_q.erase(object);
             object--;
         }
     }
-    for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++)
-    {
-    if(object->decay <= 0) 
-        {
-            level->msl_q.erase(object);
-            object--;
-        }
-    }
+
+
+    
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
         if(object->decay <= 0) 
@@ -163,6 +185,13 @@ float diff = current-target;
 return diff;
 }
 
+float rad_distance(state * current, state * target)
+{
+float new_angle = atan2(( target->y - current->y) ,(target->x - current->x));
+return angle_difference(current->turn_angle,new_angle);
+}
+
+
 float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target)
 {
 float new_angle = atan2(( target->curr.y - current->curr.y) ,(target->curr.x - current->curr.x));
@@ -174,7 +203,7 @@ float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::ite
     return sqrt( pow( target->curr.x - current->curr.x ,2) +  pow(  target->curr.y - current->curr.y ,2));
 }
 
-float distance(std::vector<MslInst>::iterator shell, std::vector<JetInst>::iterator target)
+float distance(std::vector<ProjInst>::iterator shell, std::vector<JetInst>::iterator target)
 {
     return sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2));
 }
@@ -183,38 +212,8 @@ float distance(std::vector<MslInst>::iterator shell, std::vector<JetInst>::itera
 void collision(struct LevelInst * input, struct asset_data * asset)
 {
 
-//bullet vs jet
 #pragma omp parallel for
-for(std::vector<BulInst>::iterator shell = input->bullet_q.begin(); shell != input->bullet_q.end(); shell++)
-{
-	bool destroyed = 0;
-    if(!shell->decay || shell->curr.x <= 0 || shell->curr.x >= asset->lvl_data[input->level_name].map_width || shell->curr.y <= 0 || shell->curr.y >= asset->lvl_data[input->level_name].map_height)
-		{
-		destroyed = 1;
-		}
-    else
-    {
-        for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
-        {
-            if( sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2)) < asset->jet_data[target->item.player_jet].hitbox) //target hit
-            {
-                destroyed = 1;
-                #pragma omp critical
-                {
-                target->hp -= shell->damage;
-                }
-                break;
-                
-            }
-        }
-    }
-    if(destroyed) shell->decay = 0;
-}
-
-//msl vs jet
-
-#pragma omp parallel for
-for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input->msl_q.end(); shell++)
+for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != input->proj_q.end(); shell++)
 {
 	bool activated = 0;
 
@@ -225,16 +224,22 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
 
     for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
 	{
-		if( shell->decay + 5 <= asset->msl_data[shell->type].decay  && distance(shell,target) < asset->jet_data[target->item.player_jet].hitbox + asset->msl_data[shell->type].radius) //target hit
+		if( shell->decay + 3 <= asset->proj_data[shell->type].decay + shell->launcher->decay && 
+        distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius && 
+        (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   )  )    
+        ) //target hit
 		{
-            if(shell->type != RAD || (shell->type == RAD && shell->isBotLaunched != target->isBot)) //self-enemy check
+            if(shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) //self-enemy check
             {  
                 activated = 1;
             }
             if(activated)
             {
                 #pragma omp critical
-                target->hp -= asset->msl_data[shell->type].damage;
+                {
+                    target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
+                }
+                if(!asset->proj_data[shell->type].trait.isAOE) break;
             }
 		}
 	}
@@ -243,10 +248,9 @@ for(std::vector<MslInst>::iterator shell = input->msl_q.begin(); shell != input-
     {
         shell->decay = 0;
     }
+
+    
 }
-
-
-
 
 
 }
@@ -291,17 +295,17 @@ int window_height = al_get_display_height(alleg5->display);
     float x_diff = asset->scale_factor * (x_dist) + window_width/2;
     float y_diff = asset->scale_factor * (y_dist) + window_height/2;
 
-    int full_hp = asset->jet_data[object->item.player_jet].hp;
+    int full_hp = asset->jet_data[object->type].hp;
 
     if(dist < 800)
     {
-    al_draw_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],23,23,
+    al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
     x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
     }
     else
     {
         al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-        al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->item.player_jet],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
+        al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
         x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
         );
         al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
@@ -311,7 +315,7 @@ int window_height = al_get_display_height(alleg5->display);
     
     
     al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-        if(asset->jet_data[object->item.player_jet].isBoss) 
+        if(asset->jet_data[object->type].isBoss) 
         {
             al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
             al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
@@ -339,40 +343,33 @@ int window_height = al_get_display_height(alleg5->display);
 }
 
 
-
-{//msl section
-    for(std::vector<MslInst>::iterator object = level->msl_q.begin(); object != level->msl_q.end(); object++)
-    {
-    al_draw_scaled_rotated_bitmap(asset->msl_texture[object->type],23,23,
+for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++)
+{
+if(asset->proj_data[object->type].trait.DMGfall)
+{
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+al_draw_tinted_scaled_rotated_bitmap(asset->proj_texture[object->type],al_map_rgba_f(object->color.r,  object->color.g,  object->color.b,  sqrt((float) object->decay / (asset->proj_data[object->type].decay + object->launcher->decay))),23,23,
     asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
     asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-    }
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+}else
+{
+
+al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
+    asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
+    asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
+
+
 }
 
 
 
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-{ //bullet section
-    
-    for(std::vector<BulInst>::iterator object = level->bullet_q.begin(); object != level->bullet_q.end(); object++)
-    {
-        
-        ALLEGRO_COLOR col = al_map_rgba_f(object->color.r,object->color.g,object->color.b,(float) object->decay / asset->bul_data[object->type].decay);
-        al_draw_tinted_scaled_rotated_bitmap(asset->bullet_texture[object->type][1],col,23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-        asset->bul_data[object->type].height,asset->bul_data[object->type].width,object->curr.turn_angle,0);
-        
 
-        //asset->bul_data[object->type].
-
-        col = al_map_rgba(255,255,255,255*object->decay / asset->bul_data[object->type].decay);
-        al_draw_tinted_scaled_rotated_bitmap(asset->bullet_texture[object->type][0],col,23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-        asset->bul_data[object->type].height,asset->bul_data[object->type].width,object->curr.turn_angle,0);
-        
-    }
-    
 }
+
+
+
+
 
 //particle section
 {
@@ -422,7 +419,7 @@ al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_he
 ########*/
 
 
-float current_HP = (float) player->hp / asset->jet_data[player->item.player_jet].hp;
+float current_HP = (float) player->hp / asset->jet_data[player->type].hp;
 if(current_HP > 0.9) al_draw_text(alleg5->font,al_map_rgb(0,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20,0,"OK");
 else if ( current_HP > 0.7) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20, 0,"OK");
 else if( current_HP > 0.3) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
@@ -434,21 +431,94 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
 /*########
 ## AMMO ##
 ########*/
-al_draw_filled_rectangle(0,window_height,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"RKT")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
+{
+    bool SPCisGun = (player->weapon[2].launcher->projectile - asset->proj_data < ENUM_BULLET_TYPE_FIN)  ;
 
-float ammo_percentage = (float) player->weap_ammo[0] / (asset->gun_data[player->item.player_gun].ammo_max * asset->jet_data[player->item.player_jet].gun_mult);
-ALLEGRO_COLOR ammo_color;
-if(ammo_percentage > 0.4) ammo_color = al_map_rgb(240,240,240);
-else ammo_color = al_map_rgb(250,pow((ammo_percentage/0.4),3)*255,pow((ammo_percentage/0.4),3)*255);
-al_draw_filled_rectangle(0,window_height-20, al_get_text_width(alleg5->font,"GUN"), window_height -20 - 60*ammo_percentage,ammo_color);    //ammo bar
-bool used = (player->weap_ammo[0] != 0);
-al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
 
-used = (player->weap_ammo[1] != 0);
-al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5,window_height-10,0,"RKT");    //rocket bar
-for(int i = 0; i< player->weap_ammo[1]; i++) 
-al_draw_line(al_get_text_width(alleg5->font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"RKT"),window_height-20.5 -3*i,
-al_map_rgb(240,230,140),1);
+    al_draw_filled_rectangle(0,window_height,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
+
+    float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo * asset->jet_data[player->type].weapon_mult[0]);
+    float mag_percentage = (float) player->weapon[0].magazine / player->weapon[0].launcher->magazine;
+    ALLEGRO_COLOR ammo_color;
+    int rectangle_height = 60;
+    
+//ammo indicator
+    ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );
+    al_draw_filled_rectangle(0,window_height-20, al_get_text_width(alleg5->font,"GUN"), window_height -20 - rectangle_height*ammo_percentage,ammo_color);    
+    
+    
+    if(mag_percentage <= 0.4)
+    {
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+    al_draw_filled_rectangle(window_width/2 - 120, window_height/2 + 40,window_width/2 - 100, window_height/2 - 40 + ( 80.0 * mag_percentage), mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    }
+
+
+
+
+
+    bool used;
+    used = (player->weapon[0].ammo != 0);
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
+    used = (player->weapon[1].ammo != 0);
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5,window_height-10,0,"MSL");    //rocket bar
+    used = (player->weapon[2].ammo != 0);
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-10,0,"SPC");    //rocket bar
+
+//missile indicator
+    for(int i = 0; i< player->weapon[1].ammo; i++)
+    {
+    ALLEGRO_COLOR bar_color = al_map_rgb(200,180,100);//al_map_rgb(240,230,140);
+    if(i+player->weapon[1].magazine >= player->weapon[1].ammo) bar_color = al_map_rgb(240,120,60);
+    al_draw_line(al_get_text_width(alleg5->font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL"),window_height-20.5 -3*i,
+    bar_color,1);
+    }
+//special indicator
+
+
+    if(SPCisGun)
+    {
+        float ammo_percentage = (float) player->weapon[2].ammo / (asset->laun_data[player->weapon[2].type].ammo * asset->jet_data[player->type].weapon_mult[2]);
+        float mag_percentage = (float) player->weapon[2].magazine / player->weapon[2].launcher->magazine;
+        ALLEGRO_COLOR ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );;
+        if(mag_percentage <= 0.4)
+        {
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+        al_draw_filled_rectangle(window_width/2 + 120, window_height/2 + 40,window_width/2 + 100, window_height/2 - 40 + ( 80.0 * mag_percentage),  mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
+        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+        }
+        
+        al_draw_filled_rectangle(
+        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5,window_height-20,
+        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5, window_height -20 - rectangle_height*ammo_percentage,ammo_color
+        );    
+
+    }
+    else
+    {
+
+        for(int i = 0; i< player->weapon[2].ammo; i++)
+    {
+    ALLEGRO_COLOR bar_color = al_map_rgb(250,250,250);
+    if(i+player->weapon[2].magazine >= player->weapon[2].ammo) bar_color = al_map_rgb(200,180,100);
+    al_draw_line(
+        al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-20.5 -3*i ,
+        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5,window_height-20.5 -3*i,
+    bar_color,1);
+    }
+
+
+
+
+    }
+
+
+
+
+
+}
+
 
 
 /*########
@@ -461,7 +531,7 @@ al_map_rgb(240,230,140),1);
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
         float rad_dist = rad_distance(player,object);
-        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6 && !asset->jet_data[object->item.player_jet].isBoss) 
+        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6 && !asset->jet_data[object->type].isBoss) 
         {
             ALLEGRO_COLOR indicator;
             if(distance(player,object) < 800) indicator = al_map_rgb(240,240,0);
@@ -477,7 +547,7 @@ al_map_rgb(240,230,140),1);
 
 {
 ALLEGRO_COLOR indicator;
-if(player->item.player_jet == MIG21) indicator = al_map_rgb(240,240,0);
+if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
 else indicator = al_map_rgb(0,240,0);
 float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
 
@@ -523,7 +593,7 @@ al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_p
 
 }
 
-al_draw_scaled_rotated_bitmap(asset->jet_texture[player->item.player_jet],23,23,
+al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
     window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
 
 
@@ -584,15 +654,15 @@ void countermeasure(std::vector<JetInst>::iterator object, asset_data * asset, L
     bool activated = 0;
 if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
 {
-    for(std::vector<MslInst>::iterator shell = lvl->msl_q.begin(); shell != lvl->msl_q.end(); shell++)
+    for(std::vector<ProjInst>::iterator shell = lvl->proj_q.begin(); shell != lvl->proj_q.end(); shell++)
     {
-        if(distance(shell,object) < 350 && shell->isBotLaunched != object->isBot)
+        if(shell->type >= ENUM_BULLET_TYPE_FIN && distance(shell,object) < 350 && shell->isBotLaunched != object->isBot)
         {
             activated = 1;
             if(!shell->status[MSL_STATUS::CONTROLLED])
             {
                 shell->status[MSL_STATUS::CONTROLLED] = 1;
-                shell->target_angle = (float) rand()/RAND_MAX *2*PI - PI;
+                shell->alter->target_angle = (float) rand()/RAND_MAX *2*PI - PI;
             }
             
         }
@@ -641,11 +711,11 @@ void boss_ability_use(asset_data * asset, LevelInst * level)
 {
 for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
 {
-    if(asset->jet_data[object->item.player_jet].isBoss)
+    if(asset->jet_data[object->type].isBoss)
     {
-        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[RAND_POS]) randomize_position(object,asset, level);
-        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[DASH]) dash(object,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height);
-        if(asset->boss_data[object->item.player_jet-ENUM_JET_TYPE_FIN].ability[CMEASURE]) countermeasure(object,asset,level);
+        if(asset->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[RAND_POS]) randomize_position(object,asset, level);
+        if(asset->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[DASH]) dash(object,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height);
+        if(asset->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[CMEASURE]) countermeasure(object,asset,level);
     }
 
 }
@@ -795,7 +865,8 @@ ALLEGRO_MOUSE_STATE mouse;
 
 while(!kill)
 {
-    lvl->jet_q.front().will_shoot[0] = 0; //temporary solution
+    lvl->jet_q.front().weapon[0].engaged = false; //temporary solution
+    lvl->jet_q.front().weapon[2].engaged = false; //temporary solution
     al_wait_for_event(alleg5->queue,&alleg5->event);
     switch (alleg5->event.type)
     {
@@ -824,7 +895,7 @@ while(!kill)
                 lvl->jet_q.front().alter.speed_mode = AIRBRAKE;
                 break;
                 case ALLEGRO_KEY_SPACE:
-                lvl->jet_q.front().will_shoot[1] = 1;
+                lvl->jet_q.front().weapon[1].engaged = 1;
                 break;
                 case ALLEGRO_KEY_F:
                 if(lvl->pauseEngaged)
@@ -902,10 +973,11 @@ while(!kill)
         int window_height = al_get_display_height(alleg5->display);
         { //player actions
         al_get_mouse_state(&mouse);
-        if(mouse.buttons & 1) lvl->jet_q.front().will_shoot[0] = 1; //left mouse button
+        if(mouse.buttons & 1) lvl->jet_q.front().weapon[0].engaged = 1; //left mouse button
+        if(mouse.buttons & 2) lvl->jet_q.front().weapon[2].engaged = 1; //left mouse button
         lvl->jet_q.front().target_angle = atan2((mouse.y-window_height/2) ,(mouse.x - window_width/2));
         }
-        if(lvl->jet_q.front().hp < 0) return MISSION_INIT;
+        if(lvl->jet_q.front().hp == 0) return MISSION_INIT;
 //temporary solution
         shoot(lvl,assets);
 //decisions
@@ -923,9 +995,10 @@ while(!kill)
         redraw = 0;
         garbage_collect(assets,lvl);
         cooldown(lvl->jet_q);
+        replenish(assets,lvl);
         decay(lvl,assets);
 
-        for(int i =1; i<3; i++) lvl->jet_q.front().will_shoot[i] = 0;
+        for(int i =1; i<3; i++) lvl->jet_q.front().weapon[i].engaged = 0;
 
         if(!alive_enemy_jets(lvl) && !lvl->finalPromptEngaged)
         {
@@ -948,7 +1021,7 @@ while(!kill)
             
         }
 
-
+        lvl->tick = (lvl->tick >= FPS ? 0 : lvl->tick+1);
     }
 }
 

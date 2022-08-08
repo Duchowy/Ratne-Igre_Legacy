@@ -3,13 +3,35 @@
 #include "main.h"
 #include "load_level.h"
 #include "select_level.h"
-
 //#define TPS 30.0
 
 bool allegro_init();
 void texture_init(struct asset_data *, bool);
 void load_settings(struct asset_data *);
 void particle_init(struct asset_data *);
+
+void load_save(struct LevelInst * level)
+{
+
+FILE * input = fopen("gamedata.sav", "rb");
+if(!input) return;
+
+fread(level->player.mod,sizeof(struct riven),ENUM_JET_TYPE_FIN,input);
+
+fclose(input);
+return;
+}
+
+void save_save(struct LevelInst * level)
+{
+    FILE * output = fopen("gamedata.sav", "wb");
+    if(!output) return;
+    fwrite(level->player.mod,sizeof(struct riven),4,output);
+    fclose(output);
+}
+
+
+
 
 int main()
 {
@@ -38,7 +60,9 @@ if(!alleg5.display) return 0;
 bool kill = 0;
 asset_data * assets = new asset_data;
 texture_init(assets,1);
-struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}}}};
+struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}}, .custom_stat = {nullptr,nullptr,nullptr,nullptr}}};
+for(int i = 0; i< ENUM_JET_TYPE_FIN; i++) lvl.player.mod[i].engaged = false;
+
 jet_init(assets);
 abl_init(assets);
 boss_init(assets);
@@ -48,7 +72,7 @@ launcher_init(assets);
 level_init(assets);
 
 particle_init(assets);
-
+load_save(&lvl);
 short state = LVL_SELECTION;
 al_start_timer(alleg5.timer);
 while(!kill)
@@ -70,6 +94,7 @@ al_destroy_display(alleg5.display);
 al_destroy_event_queue(alleg5.queue);
 al_destroy_timer(alleg5.timer);
 al_destroy_font(alleg5.font);
+save_save(&lvl);
 delete assets;
 }
 

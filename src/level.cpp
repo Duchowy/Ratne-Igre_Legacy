@@ -5,47 +5,110 @@
 #include "render_level.h"
 
 
-
-void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FONT * font)
+state_change_limit * process_riven(riven * mod, state_change_limit * base)
 {
-    std::vector<JetInst>::iterator object = level->jet_q.begin();
-        std::string buffer = "";
-
-        for(int i = 0; i<6; i++)
+    state_change_limit * overwrite = new state_change_limit;
+    *overwrite = *base;
+    for(int i = 0; i < (mod->dualSided ? 4 : 2 ); i++ )
+    {
+        //printf("%d: ",mod->type[i]);
+        switch(mod->type[i])
         {
-            switch(i)
-            {
-                case 0: buffer = std::to_string(object->alter.turn_speed); break;
-                //case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
-                case 2: buffer = std::to_string(object->target_angle)+" target"; break;
-                case 3: buffer = std::to_string(object->alter.turn_speed)+" turn speed"; break;
-                case 4: buffer = std::to_string(object->curr.speed)+" speed"; break;
-                case 5: buffer = std::to_string(object->weapon[0].engaged)+" shoot"; break;
-            }
-            al_draw_text(font,al_map_rgb(240,0,240),0,i*10,0,buffer.c_str());
+        case 1: overwrite->speed_limit[1] *= mod->value[i]; break; //uper speed limit
+        case 2: overwrite->speed_limit[0] *= 2. - mod->value[i]; break; //lower speed limit
+        case 3: overwrite->speed_limit[1] *= mod->value[i]; overwrite->speed_limit[0] *= 2. - mod->value[i]; break;
+        case 4: overwrite->speed_rate[1] *= mod->value[i]; break;
+        case 5: overwrite->speed_rate[0] *= mod->value[i]; break;
+        case 6: overwrite->speed_rate[1] *= mod->value[i]; overwrite->speed_rate[0] *= mod->value[i]; break;
+        case 7: overwrite->alter.turn_speed += mod->value[i]; break;
+        case 8: overwrite->turn_rate += mod->value[i]; break;
+        case 9: overwrite->default_speed += mod->value[i]; break;
+        case 10: overwrite->mobility_coef -= mod->value[i]; break;
         }
+        //printf("%f\n",mod->value[i]);
+    }
+    return overwrite;
 }
 
 
-void destroy_prompt_screen(asset_data * asset, LevelInst * level, std::vector<prompt_screen>::iterator object)
+
+
+riven * spawn_riven()
 {
-if(object != level->prompt_q.end() && level->prompt_q.size()) object = level->prompt_q.end()-1;
+    riven mod {
+        .engaged = true,
+        .dualSided = (rand()%4 == 0 ? true: false),
+    };
+    mod.type[3] = 0;
+    mod.type[4] = 0;
 
-switch(object->type)
-{
-case 0:
-level->prompt_q.erase(object);
-level->finished = 1;
-break;
 
-default:
-break;
+        short pos = 0;
+        do
+        {
+            mod.type[pos] = rand()%10+1;
+            bool unique = 1;
+            for(int i = 0; i< pos; i++)
+            {
+                if(
+                    mod.type[i] == mod.type[pos] || 
+                    ((mod.type[i]-1)/3 == 0 && (mod.type[pos]-1)/3 == 0) || //v limits
+                    ((mod.type[i]-1)/3 == 1 && (mod.type[pos]-1)/3 == 1) //engine power limits
+                )
+                {
+                    unique = 0;
+                    break;
+                } 
+            }
+            if(!unique) mod.type[pos] = (mod.type[pos] + 1 > 10 ? 1 : mod.type[pos] + 1);
+            else pos+=1;
+        } while (pos < (mod.dualSided ? 4 : 2));
+
+
+        for(int i = 0; i < (mod.dualSided ? 4 : 2 ); i++ )
+        {
+
+            if(
+                ((mod.type[i]-1)/3 == 0 ) || //v limits
+                ((mod.type[i]-1)/3 == 1 ) //engine power limit
+            ) 
+            {
+                mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.1 + 1.0;
+            }
+            else
+            {
+                switch(mod.type[i])
+                {
+                    case 7: //turn speed
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) *0.01;
+                    break;
+                    case 8: //turn rate
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) *0.005;
+                    break;
+                    case 9: //default speed
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.2;
+                    break;
+                    case 10: //coefficient
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.5;
+                    break;
+
+
+
+                }
+            }
+
+
+
+
+        }
+
+riven * heap_mod = new riven;
+*heap_mod = mod;
+return heap_mod;
 }
 
 
 
-
-}
 
 
 void cooldown(std::vector<JetInst> &input_vec)
@@ -79,7 +142,7 @@ void decay(struct LevelInst * level, struct asset_data * asset)
     #pragma omp parallel for
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
     for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++) object->decay--;
-    for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->decay >= 0) object->decay--;
+    for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->decay > 0) object->decay--;
 
 }
 
@@ -156,7 +219,7 @@ void garbage_collect(asset_data * asset, LevelInst * level)
     {
         if(object->decay == 0)
         {
-            destroy_prompt_screen(asset,level,object);
+            destroy_prompt_screen(asset,level,object,1);
             object--;
         }
 
@@ -255,391 +318,11 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
 
 }
 
-void draw_pause_screen(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
-{
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display); 
 
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_filled_rectangle(0,0,window_width,window_height,al_map_rgba(10,10,10,120));
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 
-al_draw_filled_rectangle(window_width/2-300,window_height/2-100,window_width/2+300,window_height/2+100,al_map_rgb(27,27,17));
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2-15,ALLEGRO_ALIGN_CENTER,"PAUSED");
-std::string desc = "Press ESC to unpause.";
 
 
-if(level->level_name < ENUM_LVL_TYPE_FIN) desc += "\nPress F to exit to menu.";
-else desc += "\nPress F to reset mission.";
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2,400,10,ALLEGRO_ALIGN_CENTER,desc.c_str());
 
-}
-
-void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, struct allegro5_data * alleg5)
-{
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display);
-
-{//jet section
-    std::vector<JetInst>::iterator player = level->jet_q.begin();
-    
-
-    for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
-    {
-    float dist = distance(player,object);
-    if(dist < 1000) 
-    {
-    float x_dist = object->curr.x - player->curr.x;
-    float y_dist = object->curr.y - player->curr.y;
-
-    float x_diff = asset->scale_factor * (x_dist) + window_width/2;
-    float y_diff = asset->scale_factor * (y_dist) + window_height/2;
-
-    int full_hp = asset->jet_data[object->type].hp;
-
-    if(dist < 800)
-    {
-    al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
-    x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-    }
-    else
-    {
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-        al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
-        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
-        );
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-    }
-    
-    
-    
-    
-    al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-        if(asset->jet_data[object->type].isBoss) 
-        {
-            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
-            al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
-        }
-        else 
-        {
-            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-            al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
-        }
-    if(object->mode != PATROL)
-    {
-        al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
-
-    }
-    #ifdef DEBUG
-        al_draw_text(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,std::to_string(object->mode).c_str());
-    #endif
-
-
-    }
-    
-
-
-    }
-}
-
-
-for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++)
-{
-if(asset->proj_data[object->type].trait.DMGfall)
-{
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_tinted_scaled_rotated_bitmap(asset->proj_texture[object->type],al_map_rgba_f(object->color.r,  object->color.g,  object->color.b,  sqrt((float) object->decay / (asset->proj_data[object->type].decay + object->launcher->decay))),23,23,
-    asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-    asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-}else
-{
-
-al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
-    asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-    asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-
-
-}
-
-
-
-
-}
-
-
-
-
-
-//particle section
-{
-    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
-    {
-        if(object->isDecaying)
-        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,al_map_rgba(255,255,255,255*object->decay / asset->prt_data[object->type].decay),23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
-        object->curr.turn_angle,object->flip_img
-        );
-        else
-        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,object->color,23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
-        object->curr.turn_angle,object->flip_img
-        );
-
-    }
-
-
-
-
-}
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-
-
-}
-
-
-
-void draw_ui(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
-{
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display);
-
-std::vector<JetInst>::iterator player = level->jet_q.begin();
-al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_height,al_map_rgb(0,20,20));
-
-/*########
-### HUD ##
-########*/
-
-
-
-
-/*########
-### HP ###
-########*/
-
-
-float current_HP = (float) player->hp / asset->jet_data[player->type].hp;
-if(current_HP > 0.9) al_draw_text(alleg5->font,al_map_rgb(0,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20,0,"OK");
-else if ( current_HP > 0.7) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20, 0,"OK");
-else if( current_HP > 0.3) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
-else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
-
-
-
-
-/*########
-## AMMO ##
-########*/
-{
-    bool SPCisGun = (player->weapon[2].launcher->projectile - asset->proj_data < ENUM_BULLET_TYPE_FIN)  ;
-
-
-    al_draw_filled_rectangle(0,window_height,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
-
-    float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo * asset->jet_data[player->type].weapon_mult[0]);
-    float mag_percentage = (float) player->weapon[0].magazine / player->weapon[0].launcher->magazine;
-    ALLEGRO_COLOR ammo_color;
-    int rectangle_height = 60;
-    
-//ammo indicator
-    ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );
-    al_draw_filled_rectangle(0,window_height-20, al_get_text_width(alleg5->font,"GUN"), window_height -20 - rectangle_height*ammo_percentage,ammo_color);    
-    
-    
-    if(mag_percentage <= 0.4)
-    {
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-    al_draw_filled_rectangle(window_width/2 - 120, window_height/2 + 40,window_width/2 - 100, window_height/2 - 40 + ( 80.0 * mag_percentage), mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-    }
-
-
-
-
-
-    bool used;
-    used = (player->weapon[0].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
-    used = (player->weapon[1].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5,window_height-10,0,"MSL");    //rocket bar
-    used = (player->weapon[2].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-10,0,"SPC");    //rocket bar
-
-//missile indicator
-    for(int i = 0; i< player->weapon[1].ammo; i++)
-    {
-    ALLEGRO_COLOR bar_color = al_map_rgb(200,180,100);//al_map_rgb(240,230,140);
-    if(i+player->weapon[1].magazine >= player->weapon[1].ammo) bar_color = al_map_rgb(240,120,60);
-    al_draw_line(al_get_text_width(alleg5->font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL"),window_height-20.5 -3*i,
-    bar_color,1);
-    }
-//special indicator
-
-
-    if(SPCisGun)
-    {
-        float ammo_percentage = (float) player->weapon[2].ammo / (asset->laun_data[player->weapon[2].type].ammo * asset->jet_data[player->type].weapon_mult[2]);
-        float mag_percentage = (float) player->weapon[2].magazine / player->weapon[2].launcher->magazine;
-        ALLEGRO_COLOR ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );;
-        if(mag_percentage <= 0.4)
-        {
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-        al_draw_filled_rectangle(window_width/2 + 120, window_height/2 + 40,window_width/2 + 100, window_height/2 - 40 + ( 80.0 * mag_percentage),  mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-        }
-        
-        al_draw_filled_rectangle(
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5,window_height-20,
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5, window_height -20 - rectangle_height*ammo_percentage,ammo_color
-        );    
-
-    }
-    else
-    {
-
-        for(int i = 0; i< player->weapon[2].ammo; i++)
-    {
-    ALLEGRO_COLOR bar_color = al_map_rgb(250,250,250);
-    if(i+player->weapon[2].magazine >= player->weapon[2].ammo) bar_color = al_map_rgb(200,180,100);
-    al_draw_line(
-        al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-20.5 -3*i ,
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5,window_height-20.5 -3*i,
-    bar_color,1);
-    }
-
-
-
-
-    }
-
-
-
-
-
-}
-
-
-
-/*########
-## RADAR #
-########*/
-
-
-/*
-    for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
-    {
-        float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
-        float rad_dist = rad_distance(player,object);
-        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6 && !asset->jet_data[object->type].isBoss) 
-        {
-            ALLEGRO_COLOR indicator;
-            if(distance(player,object) < 800) indicator = al_map_rgb(240,240,0);
-            else indicator = al_map_rgb(0,240,0);
-            al_draw_line(window_width/2 + 14*cos(rad_pointer),window_height/2 + 14*sin(rad_pointer),
-            window_width/2 + 28*cos(rad_pointer),window_height/2 + 28*sin(rad_pointer),
-            indicator,0.8);
-        }
-        
-
-    }
-*/
-
-{
-ALLEGRO_COLOR indicator;
-if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
-else indicator = al_map_rgb(0,240,0);
-float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
-
-
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_filled_pieslice(window_width/2,window_height/2,48,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
-
-for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
-{
-    float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
-    float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
-    float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
-    float opacity;
-    
-    switch(level->radar.mode)
-    {
-        case 0:
-        opacity = 1 - pow(1 - (float) object->decay/48,4);
-        break;
-        case 1:
-        opacity = 1 - pow(1 - (float) object->decay/24,2);
-        break;
-    }
-
-
-
-        al_draw_filled_circle(x_pos, y_pos,
-        2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
-        );
-        al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
-
-}
-al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle),window_height/2 + 18*sin(player->curr.turn_angle),
-            window_width/2 + 48*cos(player->curr.turn_angle),window_height/2 + 48*sin(player->curr.turn_angle),
-            al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
-
-al_draw_arc(window_width/2,window_height/2,30,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8);
-
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_pointer),
-            window_width/2 + 48*cos(rad_pointer),window_height/2 + 48*sin(rad_pointer),
-            indicator,0.8); //radar seeker line
-
-}
-
-al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
-    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
-
-
-
-/*########
-# PROMPT #
-########*/
-{
-for(std::vector<prompt_screen>::iterator prompt = level->prompt_q.begin(); prompt != level->prompt_q.end(); prompt++)
-{
-al_draw_filled_rectangle(prompt->body.x-prompt->body.width/2,prompt->body.y-prompt->body.height/2,prompt->body.x+prompt->body.width/2,prompt->body.y+prompt->body.height/2,al_map_rgb(27,27,17));
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x,prompt->body.y,ALLEGRO_ALIGN_CENTER,prompt->body.name.c_str());
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x,prompt->body.y,300,10,ALLEGRO_ALIGN_CENTER,prompt->body.desc.c_str());
-}
-}
-
-/*########
-## PAUSE #
-########*/
-
-
-if(level->pauseEngaged)
-{
-    draw_pause_screen(level,asset,alleg5);
-}
-
-
-}
-
-
-
-
-
-
-
-
-void zoom(asset_data * assets, short direction)
-{
-if(direction > 0) assets->scale_factor+=0.1;
-if(direction < 0) assets->scale_factor-=0.1;
-
-
-if(assets->scale_factor < 0.8) assets->scale_factor = 0.8;
-if(assets->scale_factor > 1.0) assets->scale_factor = 1.0;
-al_set_mouse_z(0); //ticker bound
-}
 
 int alive_enemy_jets(LevelInst * lvl)
 {
@@ -782,80 +465,13 @@ void render(struct LevelInst * level, struct asset_data * asset, struct allegro5
 
 }
 
-void update_prompt_screen(allegro5_data * alleg5, LevelInst * level)
-{
-short num = 0;
-for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++ , num++)
-{
-    object->body.x = al_get_display_width(alleg5->display)/2 + 25*num;
-    object->body.y = al_get_display_height(alleg5->display)/2 + 15*num;
-}
-
-}
-
-
-void spawn_prompt_screen(asset_data * asset, allegro5_data * alleg5, LevelInst * level, unsigned short type) 
-{
-int display_width = al_get_display_width(alleg5->display);
-int display_height = al_get_display_height(alleg5->display); 
-
-
-for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->type == type) return;
-
-std::string title;
-std::string desc;
-short decay;
-bool F_Action;
-bool Z_Action;
-
-switch(type)
-{
-    case 0:
-    {
-        
-        if(asset->lvl_data[level->level_name].next_level != ENUM_BKGR_TYPE_FIN)
-        {
-            unsigned short rander = rand()%4;
-            switch(rander)
-            {
-                case 0: title = "Ready for more? You'd better be."; break;
-                case 1: title = "Don't let your guard down just jet."; break;
-                case 2: title = "Move on, more hostiles on the way."; break;
-                case 3: title = "Brave enough for more? Hostiles incoming!"; break;
-            }
-        }
-        else
-        {
-            title = "Mission accomplished. Return home.";
-        }
-        decay = 180;
-        F_Action = 0;
-        Z_Action = 0;
-    }
-    break;
-
-}
-if(F_Action) desc + "Press F to confirm"; //F podmień
-if(F_Action && Z_Action) desc + "\n";
-if(Z_Action) desc + "Press Z to deny";
-
-
-prompt_screen prompt = {.type=type,{.x = display_width/2 + 25 * level->prompt_q.size(), .y = display_height/2 + 15 * level->prompt_q.size(), .width = 400, .height = 150,.name = title, .desc = desc},.decay = decay, .F_Action = F_Action, .Z_Action = Z_Action};
-
-level->prompt_q.push_back(prompt);
-
-
-
-
-
-}
-
 
 
 
 
 int level(allegro5_data*alleg5, asset_data * assets, LevelInst * lvl)
 {
+
 bool kill = 0;
 bool redraw = 1;
 
@@ -906,15 +522,15 @@ while(!kill)
                     if(lvl->level_name < ENUM_LVL_TYPE_FIN) return EQ_SELECTION;
                     else return MISSION_INIT;
                 }
-                else if(lvl->prompt_q.back().F_Action) 
+                else if(lvl->prompt_q.size() && lvl->prompt_q.back().F_Action) 
                 {
-                    
+                    if(lvl->prompt_q.back().type == 1) destroy_prompt_screen(assets,lvl,lvl->prompt_q.end()-1,1);
                 }
                 break;
                 case ALLEGRO_KEY_Z:
-                if(lvl->prompt_q.back().Z_Action)
+                if(lvl->prompt_q.size() && lvl->prompt_q.back().Z_Action)
                 {
-
+                    if(lvl->prompt_q.back().type == 1) destroy_prompt_screen(assets,lvl,lvl->prompt_q.end()-1,0);
                 }
                 break;
                 case ALLEGRO_KEY_ESCAPE:
@@ -1003,7 +619,7 @@ while(!kill)
         if(!alive_enemy_jets(lvl) && !lvl->finalPromptEngaged)
         {
             lvl->finalPromptEngaged = true;
-            spawn_prompt_screen(assets,alleg5,lvl,0);
+            spawn_prompt_screen(assets,alleg5,lvl,(assets->lvl_data[lvl->level_name].next_level == ENUM_BKGR_TYPE_FIN && assets->lvl_data[lvl->level_name].isBoss ? 1 : 0 ));
         }
         if(lvl->finished)
         {

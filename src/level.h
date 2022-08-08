@@ -11,6 +11,7 @@ unsigned short enemy_quality[ENUM_BOSS_TYPE_FIN];
 unsigned int map_width;
 unsigned int map_height;
 short next_level;
+bool isBoss;
 };
 
 struct RadarNode
@@ -51,8 +52,8 @@ struct riven
 {
 bool engaged;
 bool dualSided;
-unsigned short type[4];
-float value[4];
+uint8_t type[4];
+double value[4];
 };
 
 
@@ -80,6 +81,7 @@ float scale;
 struct RadarInst radar;
 struct Player_Data player;
 short tick;
+riven * gift;
 bool pauseEngaged;
 bool finished;
 bool finalPromptEngaged;
@@ -96,7 +98,8 @@ struct Particle
 
 
 
-
+riven * spawn_riven();
+state_change_limit * process_riven(riven * mod, state_change_limit * base);
 int level(allegro5_data*,asset_data*,LevelInst*);
 float angle_addition(float object, float addition);
 float angle_difference(float current, float target);

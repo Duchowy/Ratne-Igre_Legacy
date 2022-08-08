@@ -352,7 +352,7 @@ return object;
 
 
 
-JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot)
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_change_limit * overwrite,bool bot)
 {
     JetInst object = {
         .type = selected->player_jet,
@@ -373,7 +373,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,bool bot
         .status = {0,0},
         .isBot = bot,
         .ability = nullptr,
-        .overwrite_limit = nullptr
+        .overwrite_limit = (overwrite ? overwrite : nullptr)
     };
 
     for(int i = 0; i<3; i++) object.weapon[i] = launcher_spawn(&asset->jet_data[selected->player_jet],&asset->laun_data[selected->weapon[i]],selected->weapon[i],i);
@@ -410,7 +410,7 @@ for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++)
 {
     for(int q = 0; q< level->enemy_quality[i]; q++)
     {
-        JetInst temp = jet_spawn(asset,templat+i,1);
+        JetInst temp = jet_spawn(asset,templat+i,nullptr,1);
         temp.curr.x = x + rand()%20-10;
         temp.curr.y = y;
         level->jet_q.push_back(temp);
@@ -422,7 +422,7 @@ for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++)
 {
     for(int q = 0; q< level->enemy_quality[i]; q++)
     {
-        JetInst temp = jet_spawn(asset,templat+i,1);
+        JetInst temp = jet_spawn(asset,templat+i,nullptr,1);
         temp.curr.x = x + (float)rand()/RAND_MAX*0.4*map_width - 0.2*map_width;
         temp.curr.y = map_height*(float)rand()/RAND_MAX;
         temp.ability = new struct Ability[ENUM_BOSS_ABILITY_FIN];

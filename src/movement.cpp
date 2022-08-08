@@ -170,7 +170,7 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     for(std::vector<JetInst>::iterator object = data->jet_q.begin(); object != data->jet_q.end(); object++)
     {
         move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
-        advance(&object->curr,&object->alter, &asset->jet_data[object->type].alter_limit, object->target_angle,ADVANCED);
+        advance(&object->curr,&object->alter,    (object->overwrite_limit ? object->overwrite_limit : &asset->jet_data[object->type].alter_limit)     , object->target_angle,ADVANCED);
     }
 
     #pragma omp parallel for

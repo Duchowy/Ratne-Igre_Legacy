@@ -132,7 +132,7 @@ switch(number)
 al_set_mouse_z(0); //zero the scroll
 }
 
-void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct selection * choice, std::array<int,100> & graph_nodes)
+void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, std::array<int,100> & graph_nodes, std::array<int,100> & overwrite_graph_nodes )
 {
 
 /*########
@@ -147,8 +147,8 @@ al_map_rgb(0,20,20));
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y,ALLEGRO_ALIGN_CENTRE,button[i].name.c_str());
 al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y-button[i].height/2-40,200,al_get_font_line_height(alleg5->font),ALLEGRO_ALIGN_CENTRE,button[i].desc.c_str());
 }
-al_draw_scaled_rotated_bitmap(assets->jet_texture[choice->player_jet],al_get_bitmap_width(assets->jet_texture[choice->player_jet])/2,al_get_bitmap_height(assets->jet_texture[choice->player_jet])/2,
-button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[choice->player_jet])-40,2,2,0,0);
+al_draw_scaled_rotated_bitmap(assets->jet_texture[player->choice.player_jet],al_get_bitmap_width(assets->jet_texture[player->choice.player_jet])/2,al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])/2,
+button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])-40,2,2,0,0);
 
 /*########
 # BUTTON #
@@ -187,12 +187,23 @@ for(int i = 0 ; i< 3; i++)
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-310,0,"%°/s");
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x + 80,button[0].y-200,0,"IAS");
 
-al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[choice->player_jet].alter_limit.speed_limit[0]);
-al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x + 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[choice->player_jet].alter_limit.speed_limit[1]);
+al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[0]);
+al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x + 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[1]);
 
 
 
 for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-200 - graph_nodes[i],al_map_rgb(120,120,0));
+
+
+if(player->mod[player->choice.player_jet].engaged)
+{
+
+for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-200 - overwrite_graph_nodes[i],al_map_rgb(200,180,100));
+al_draw_textf(alleg5->font,al_map_rgb(200,180,100),button[0].x - 50,button[0].y-190,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[0]);
+al_draw_textf(alleg5->font,al_map_rgb(200,180,100),button[0].x + 50,button[0].y-190,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[1]);
+
+}
+
 
 
  
@@ -209,6 +220,7 @@ std::array<box_string, 2> button_click = {{{.width = 190, .height = 90, .name = 
 
 
 std::array<int,100> graph_nodes;
+std::array<int,100> overwrite_graph_nodes;
 
 update_button_pos(button,button_click,alleg5);
 
@@ -221,7 +233,7 @@ lvl->radar.mode = 0;
 
 
 update_graph(graph_nodes,&assets->jet_data[lvl->player.choice.player_jet].alter_limit);
-
+if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(overwrite_graph_nodes,lvl->player.custom_stat[lvl->player.choice.player_jet]);
 
 
 
@@ -251,6 +263,7 @@ while(!kill && !quit)
             {
                 update(button,&lvl->player.choice,&mouse);
                 update_graph(graph_nodes,&assets->jet_data[lvl->player.choice.player_jet].alter_limit);
+                if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(overwrite_graph_nodes,lvl->player.custom_stat[lvl->player.choice.player_jet]);
             }
             break;
         }
@@ -287,7 +300,7 @@ if(redraw && al_is_event_queue_empty(alleg5->queue))
 {
     //draw sequence
     map_button(button,&lvl->player.choice);
-    draw(button,button_click,assets,alleg5,&lvl->player.choice,graph_nodes);
+    draw(button,button_click,assets,alleg5,&lvl->player,graph_nodes,overwrite_graph_nodes);
     al_flip_display();
     al_clear_to_color(al_map_rgb(27,27,27));
     redraw = 0;
@@ -305,7 +318,7 @@ return MISSION_INIT;
 
 int spawn_level(asset_data * asset, LevelInst * level)
 {
-    
+    if(level->gift) delete level->gift;
     al_clear_to_color(al_map_rgb(0,0,0));
     al_flip_display();
     for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++) if(object->ability) delete object->ability;
@@ -322,12 +335,10 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->pauseEngaged = false;
     level->finished = false;
     level->finalPromptEngaged = false;
-
-    
-
+    level->gift = (asset->lvl_data[level->level_name].isBoss && asset->lvl_data[level->level_name].next_level == ENUM_BKGR_TYPE_FIN ? spawn_riven() : nullptr);
 
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
-    JetInst player = jet_spawn(asset,&level->player.choice,0);
+    JetInst player = jet_spawn(asset,&level->player.choice,(level->player.mod[level->player.choice.player_jet].engaged ? level->player.custom_stat[level->player.choice.player_jet] : nullptr),0);
     level->jet_q.push_back(player);
     level->jet_q.front().curr.x = 300;
     level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
@@ -356,6 +367,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ATLANTIC;
+        asset->lvl_data[i].isBoss = false;
         break;
         }
         case PFERD:
@@ -366,6 +378,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].isBoss = false;
         break;
         }
         case INDIA:
@@ -375,6 +388,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = DNEPR;
+        asset->lvl_data[i].isBoss = false;
         break;
         }
         case DNEPR:
@@ -385,15 +399,18 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].isBoss = true;
         break;
         }
         case ATLANTIC:
         {
+        //int amnt[] = {0,0,0,0,0,0};
         int amnt[] = {0,3,3,0,0,1};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
+        asset->lvl_data[i].isBoss = true;
         break;
         }
 

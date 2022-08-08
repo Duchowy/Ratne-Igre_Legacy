@@ -143,11 +143,36 @@ return i;
 return ENUM_LVL_TYPE_FIN;
 }
 
+void refresh_riven(struct LevelInst * level,struct asset_data * asset)
+{
+    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++)
+    {
+        if(level->player.mod[i].engaged)
+        {
+            level->player.custom_stat[i] = process_riven(&level->player.mod[i],&asset->jet_data[i].alter_limit);
+        }
+        else
+        {
+            delete level->player.custom_stat[i];
+            level->player.custom_stat[i] = nullptr;
+        }
+
+
+
+    }
+
+
+
+
+}
+
+
 
 
 int lvl_select(struct LevelInst * level,struct asset_data * asset, allegro5_data* alleg5)
 {
 int tick = 0;
+refresh_riven(level,asset);
 
 int lvl_selected = level->level_name;
 std::array<node,ENUM_LVL_TYPE_FIN> node_array {{{1586,358,20,al_map_rgb(120,120,120),0} , {2148,588,20,al_map_rgb(120,120,120),1} , {1020,864,20,al_map_rgb(120,120,0),2}}};

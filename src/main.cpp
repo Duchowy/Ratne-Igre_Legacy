@@ -47,7 +47,7 @@ allegro5_data alleg5;
 alleg5.display = al_create_display(default_window_width,default_window_height);
 
 alleg5.queue = al_create_event_queue();
-alleg5.font = al_create_builtin_font();
+alleg5.font = al_load_ttf_font("font.ttf",12,0);
 alleg5.timer = al_create_timer(1.0/FPS);
 
 al_register_event_source(alleg5.queue,al_get_keyboard_event_source());
@@ -95,6 +95,7 @@ al_destroy_event_queue(alleg5.queue);
 al_destroy_timer(alleg5.timer);
 al_destroy_font(alleg5.font);
 save_save(&lvl);
+destroy_level(assets,&lvl);
 delete assets;
 }
 
@@ -106,6 +107,7 @@ if(!al_init_image_addon()) return 0;
 if(!al_init_primitives_addon()) return 0;
 if(!al_install_keyboard()) return 0;
 if(!al_install_mouse()) return 0;
+if(!al_init_ttf_addon()) return 0;
 return 1;
 }
 

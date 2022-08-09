@@ -1,7 +1,7 @@
 SRC = main.cpp level.cpp load_level.cpp jet.cpp movement.cpp select_level.cpp render_level.cpp
 DEPS = $(addprefix src/,$(SRC))
 INCL = main.h level.h load_level.h jet.h movement.h common.h enum.h select_level.h render_level.h
-LIB = -lallegro -lallegro_font -lallegro_image -lallegro_primitives -fopenmp
+LIB = -lallegro -lallegro_font -lallegro_image -lallegro_primitives -lallegro_ttf -fopenmp
 LIB_PATH = -I deps/include -L deps/lib
 OBJ = $(SRC:.cpp=.o)
 EXE = debug/ratne.exe

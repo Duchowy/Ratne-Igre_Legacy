@@ -5,7 +5,32 @@
 #include "movement.h"
 
 
+struct graph_data
+{
+std::array<short,100> node;
+short low_pos;
+short mid_pos;
+short high_pos;
+};
 
+void update_graph(graph_data * graph,state_change_limit * alter, float lower, float upper)
+{
+    double iterator = (double) (upper - lower)/100.0;
+
+    graph->low_pos = 0;
+    graph->high_pos = 99;
+    graph->mid_pos = 49;
+
+
+    for(int i = 0; i<100; i++)
+    {
+        if(fabs(lower+i*iterator - alter->speed_limit[0])/2. <= iterator) graph->low_pos = i;
+        if(fabs(lower+i*iterator - alter->speed_limit[1])/2. <= iterator) graph->high_pos = i;
+        if(fabs(lower+i*iterator - alter->default_speed)/2. <= iterator) graph->mid_pos = i;
+
+        graph->node[i] = (double) 100 * movement_coef_calculate(alter,lower+i*iterator);
+    }
+}
 
 
 int process_click(std::array<box_string, 2> & button, ALLEGRO_MOUSE_STATE * mouse)
@@ -61,7 +86,9 @@ void update_button_pos(std::array<box_string, 4> & button,std::array<box_string,
 {
 for(int i = 0; i<4; i++)
 {
-button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
+//button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
+button[i].x = (float) al_get_display_width(alleg5->display)/2 + 250*i - 375;
+
 button[i].y = al_get_display_height(alleg5->display) * 7/10;
 
 }
@@ -74,16 +101,7 @@ button_click[1].y = al_get_display_height(alleg5->display) - button_click[1].hei
 
 }
 
-void update_graph(std::array<int,100> & graph_nodes,state_change_limit * alter)
-{
-    double iterator = (double) (alter->speed_limit[1] - alter->speed_limit[0])/100.0;
-    double low = alter->speed_limit[0];
 
-    for(int i = 0; i<100; i++)
-    {
-        graph_nodes[i] = (double) 100 * movement_coef_calculate(alter,low+i*iterator);
-    }
-}
 
 
 
@@ -132,7 +150,7 @@ switch(number)
 al_set_mouse_z(0); //zero the scroll
 }
 
-void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, std::array<int,100> & graph_nodes, std::array<int,100> & overwrite_graph_nodes )
+void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, graph_data * primary, graph_data * secondary )
 {
 
 /*########
@@ -145,10 +163,10 @@ for(int i = 0; i<4; i++)
 al_draw_filled_rectangle(button[i].x - button[i].width/2,button[i].y - button[i].height/2,button[i].x + button[i].width/2,button[i].y + button[i].height/2,
 al_map_rgb(0,20,20));
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y,ALLEGRO_ALIGN_CENTRE,button[i].name.c_str());
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y-button[i].height/2-40,200,al_get_font_line_height(alleg5->font),ALLEGRO_ALIGN_CENTRE,button[i].desc.c_str());
+al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y-button[i].height/2-50,200,al_get_font_line_height(alleg5->font),ALLEGRO_ALIGN_CENTRE,button[i].desc.c_str());
 }
 al_draw_scaled_rotated_bitmap(assets->jet_texture[player->choice.player_jet],al_get_bitmap_width(assets->jet_texture[player->choice.player_jet])/2,al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])/2,
-button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])-40,2,2,0,0);
+button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])-50,2,2,0,0);
 
 /*########
 # BUTTON #
@@ -173,34 +191,50 @@ al_draw_text(alleg5->font,al_map_rgb(240,240,240),button_click[i].x,button_click
 /*########
 ## GRAPH #
 ########*/
-
-al_draw_filled_rectangle(button[0].x - 50, button[0].y-200, button[0].x + 50,button[0].y-300,al_map_rgb(0,0,0));
+int graph_pos_y = 220; //offset from button 0
+al_draw_filled_rectangle(button[0].x - 50, button[0].y-graph_pos_y, button[0].x + 50,button[0].y-graph_pos_y-100,al_map_rgb(0,0,0));
 
 
 
 
 for(int i = 0 ; i< 3; i++)
 {
-    al_draw_line(button[0].x - 50,button[0].y-225 -i*25,button[0].x + 50,button[0].y-225 -i*25,al_map_rgb(240,240,240),0.6);
-    al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-230-i*25,0,"%.2f",(float)(i+1)*0.25 );
+    al_draw_line(button[0].x - 50,button[0].y-graph_pos_y - 25 -i*25,button[0].x + 50,button[0].y-graph_pos_y - 25 -i*25,al_map_rgb(240,240,240),0.6);
+    al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-graph_pos_y-30-i*25,0,"%.2f",(float)(i+1)*0.25 );
 }
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-310,0,"%°/s");
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x + 80,button[0].y-200,0,"IAS");
-
-al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[0]);
-al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x + 50,button[0].y-200,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[1]);
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-graph_pos_y - 100 - 10,0,"%°/s");
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x + 80,button[0].y-graph_pos_y,0,"IAS");
 
 
 
-for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-200 - graph_nodes[i],al_map_rgb(120,120,0));
+
+
+for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-graph_pos_y - primary->node[i],al_map_rgb(120,120,0));
+al_draw_line(button[0].x - 50 + primary->low_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + primary->low_pos,button[0].y-graph_pos_y - primary->node[primary->low_pos],al_map_rgb(120,120,0),0.5);
+al_draw_line(button[0].x - 50 + primary->mid_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + primary->mid_pos,button[0].y-graph_pos_y - primary->node[primary->mid_pos],al_map_rgb(120,120,0),0.5);
+al_draw_line(button[0].x - 50 + primary->high_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + primary->high_pos,button[0].y-graph_pos_y - primary->node[primary->high_pos],al_map_rgb(120,120,0),0.5);
+
+al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50 + primary->low_pos ,button[0].y-graph_pos_y,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[0]);
+al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50 + primary->high_pos,button[0].y-graph_pos_y,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[1]);
 
 
 if(player->mod[player->choice.player_jet].engaged)
 {
 
-for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-200 - overwrite_graph_nodes[i],al_map_rgb(200,180,100));
-al_draw_textf(alleg5->font,al_map_rgb(200,180,100),button[0].x - 50,button[0].y-190,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[0]);
-al_draw_textf(alleg5->font,al_map_rgb(200,180,100),button[0].x + 50,button[0].y-190,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[1]);
+for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-graph_pos_y - secondary->node[i],al_map_rgb(240,180,100));
+al_draw_line(button[0].x - 50 + secondary->low_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y - secondary->node[secondary->low_pos],al_map_rgb(240,180,100),0.5);
+al_draw_line(button[0].x - 50 + secondary->mid_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + secondary->mid_pos,button[0].y-graph_pos_y - secondary->node[secondary->mid_pos],al_map_rgb(240,180,100),0.5);
+al_draw_line(button[0].x - 50 + secondary->high_pos,  button[0].y-graph_pos_y,
+button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y - secondary->node[secondary->high_pos],al_map_rgb(240,180,100),0.5);
+
+al_draw_textf(alleg5->font,al_map_rgb(240,180,100),button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[0]);
+al_draw_textf(alleg5->font,al_map_rgb(240,180,100),button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[1]);
+
 
 }
 
@@ -219,8 +253,9 @@ std::array<box_string, 4> button = {{{.width = 190, .height = 90},{.width = 190,
 std::array<box_string, 2> button_click = {{{.width = 190, .height = 90, .name = "<- MAP"},{.width = 190, .height = 90, .name = "MISSION ->"}}};
 
 
-std::array<int,100> graph_nodes;
-std::array<int,100> overwrite_graph_nodes;
+struct graph_data primary;
+struct graph_data secondary;
+
 
 update_button_pos(button,button_click,alleg5);
 
@@ -232,8 +267,8 @@ lvl->radar.turn_speed = -(PI/3)/30;
 lvl->radar.mode = 0;
 
 
-update_graph(graph_nodes,&assets->jet_data[lvl->player.choice.player_jet].alter_limit);
-if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(overwrite_graph_nodes,lvl->player.custom_stat[lvl->player.choice.player_jet]);
+update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
+if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
 
 
 
@@ -262,8 +297,8 @@ while(!kill && !quit)
             if(al_get_mouse_state_axis(&mouse, 2) != 0)
             {
                 update(button,&lvl->player.choice,&mouse);
-                update_graph(graph_nodes,&assets->jet_data[lvl->player.choice.player_jet].alter_limit);
-                if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(overwrite_graph_nodes,lvl->player.custom_stat[lvl->player.choice.player_jet]);
+                update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
+                if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
             }
             break;
         }
@@ -300,7 +335,7 @@ if(redraw && al_is_event_queue_empty(alleg5->queue))
 {
     //draw sequence
     map_button(button,&lvl->player.choice);
-    draw(button,button_click,assets,alleg5,&lvl->player,graph_nodes,overwrite_graph_nodes);
+    draw(button,button_click,assets,alleg5,&lvl->player,&primary,&secondary);
     al_flip_display();
     al_clear_to_color(al_map_rgb(27,27,27));
     redraw = 0;
@@ -316,17 +351,31 @@ if(quit) return QUIT;
 return MISSION_INIT;
 }
 
-int spawn_level(asset_data * asset, LevelInst * level)
+void destroy_level(asset_data * asset, LevelInst * level)
 {
-    if(level->gift) delete level->gift;
-    al_clear_to_color(al_map_rgb(0,0,0));
-    al_flip_display();
-    for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++) if(object->ability) delete object->ability;
+    if(level->gift)
+    {
+        delete level->gift;
+        level->gift = nullptr;
+    }
+    for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++) 
+    {
+        if(object->ability) delete object->ability;
+        if(object->overwrite_limit) delete object->overwrite_limit;
+    }
     level->jet_q.clear();
+    for(int i = 0; i < ENUM_JET_TYPE_FIN; i++) 
+    {
+        level->player.custom_stat[i] = nullptr;
+    }
+
+
     for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++)
     {
         if(object->alter) delete object->alter;
     }
+
+
     level->proj_q.clear();
     level->prt_q.clear();
     level->radar.node_q.clear();
@@ -335,8 +384,19 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->pauseEngaged = false;
     level->finished = false;
     level->finalPromptEngaged = false;
+}
+
+
+
+int spawn_level(asset_data * asset, LevelInst * level)
+{
+    
+    al_clear_to_color(al_map_rgb(0,0,0));
+    al_flip_display();
+    destroy_level(asset,level);
     level->gift = (asset->lvl_data[level->level_name].isBoss && asset->lvl_data[level->level_name].next_level == ENUM_BKGR_TYPE_FIN ? spawn_riven() : nullptr);
 
+    refresh_riven(level,asset);
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
     JetInst player = jet_spawn(asset,&level->player.choice,(level->player.mod[level->player.choice.player_jet].engaged ? level->player.custom_stat[level->player.choice.player_jet] : nullptr),0);
     level->jet_q.push_back(player);

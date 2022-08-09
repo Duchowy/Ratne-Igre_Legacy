@@ -4,26 +4,29 @@
 #include "movement.h"
 #include "render_level.h"
 
-
-state_change_limit * process_riven(riven * mod, state_change_limit * base)
+int comparator(const void * fa, const void * fb)
 {
-    state_change_limit * overwrite = new state_change_limit;
-    *overwrite = *base;
+    return (*((uint8_t*)fa) - *((uint8_t*)fb));
+}
+
+state_change_limit process_riven(riven * mod, state_change_limit * base)
+{
+    state_change_limit overwrite = *base;
     for(int i = 0; i < (mod->dualSided ? 4 : 2 ); i++ )
     {
         //printf("%d: ",mod->type[i]);
         switch(mod->type[i])
         {
-        case 1: overwrite->speed_limit[1] *= mod->value[i]; break; //uper speed limit
-        case 2: overwrite->speed_limit[0] *= 2. - mod->value[i]; break; //lower speed limit
-        case 3: overwrite->speed_limit[1] *= mod->value[i]; overwrite->speed_limit[0] *= 2. - mod->value[i]; break;
-        case 4: overwrite->speed_rate[1] *= mod->value[i]; break;
-        case 5: overwrite->speed_rate[0] *= mod->value[i]; break;
-        case 6: overwrite->speed_rate[1] *= mod->value[i]; overwrite->speed_rate[0] *= mod->value[i]; break;
-        case 7: overwrite->alter.turn_speed += mod->value[i]; break;
-        case 8: overwrite->turn_rate += mod->value[i]; break;
-        case 9: overwrite->default_speed += mod->value[i]; break;
-        case 10: overwrite->mobility_coef -= mod->value[i]; break;
+        case 1: overwrite.speed_limit[1] *= mod->value[i]; break; //uper speed limit
+        case 2: overwrite.speed_limit[0] *= 2. - mod->value[i]; break; //lower speed limit
+        case 3: overwrite.speed_limit[1] *= mod->value[i]; overwrite.speed_limit[0] *= 2. - mod->value[i]; break;
+        case 4: overwrite.speed_rate[1] *= mod->value[i]; break;
+        case 5: overwrite.speed_rate[0] *= mod->value[i]; break;
+        case 6: overwrite.speed_rate[1] *= mod->value[i]; overwrite.speed_rate[0] *= mod->value[i]; break;
+        case 7: overwrite.alter.turn_speed += mod->value[i]; break;
+        case 8: overwrite.turn_rate += mod->value[i]; break;
+        case 9: overwrite.default_speed += mod->value[i]; break;
+        case 10: overwrite.mobility_coef -= mod->value[i]; break;
         }
         //printf("%f\n",mod->value[i]);
     }
@@ -31,6 +34,25 @@ state_change_limit * process_riven(riven * mod, state_change_limit * base)
 }
 
 
+void refresh_riven(struct LevelInst * level,struct asset_data * asset)
+{
+    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++)
+    {
+        if(level->player.mod[i].engaged)
+        {
+            if(!level->player.custom_stat[i]) level->player.custom_stat[i] = new state_change_limit;
+            *level->player.custom_stat[i] = process_riven(&level->player.mod[i],&asset->jet_data[i].alter_limit);
+        }
+        else
+        {
+            if(level->player.custom_stat[i]) delete level->player.custom_stat[i];
+            level->player.custom_stat[i] = nullptr;
+        }
+
+    }
+
+
+}
 
 
 riven * spawn_riven()
@@ -63,6 +85,8 @@ riven * spawn_riven()
             if(!unique) mod.type[pos] = (mod.type[pos] + 1 > 10 ? 1 : mod.type[pos] + 1);
             else pos+=1;
         } while (pos < (mod.dualSided ? 4 : 2));
+
+        qsort(mod.type,(mod.dualSided ? 4 : 2 ),sizeof(uint8_t),comparator);
 
 
         for(int i = 0; i < (mod.dualSided ? 4 : 2 ); i++ )

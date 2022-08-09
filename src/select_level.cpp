@@ -143,28 +143,7 @@ return i;
 return ENUM_LVL_TYPE_FIN;
 }
 
-void refresh_riven(struct LevelInst * level,struct asset_data * asset)
-{
-    for(int i = 0; i< ENUM_JET_TYPE_FIN; i++)
-    {
-        if(level->player.mod[i].engaged)
-        {
-            level->player.custom_stat[i] = process_riven(&level->player.mod[i],&asset->jet_data[i].alter_limit);
-        }
-        else
-        {
-            delete level->player.custom_stat[i];
-            level->player.custom_stat[i] = nullptr;
-        }
 
-
-
-    }
-
-
-
-
-}
 
 
 

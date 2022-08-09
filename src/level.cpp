@@ -381,7 +381,7 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
         object->ability[CMEASURE].duration = asset->abl_data[CMEASURE].duration;
     }
 
-    if(particlesEnabled && object->ability[CMEASURE].duration && object->ability[CMEASURE].duration %20 == 0)
+    if(asset->config.particlesEnabled && object->ability[CMEASURE].duration && object->ability[CMEASURE].duration %20 == 0)
     {
     ParticleInst temp1, temp2;
     temp1.type = temp2.type = FLARE;
@@ -661,7 +661,7 @@ while(!kill)
             
         }
 
-        lvl->tick = (lvl->tick >= FPS ? 0 : lvl->tick+1);
+        lvl->tick = (lvl->tick >= assets->config.FPS ? 0 : lvl->tick+1);
     }
 }
 

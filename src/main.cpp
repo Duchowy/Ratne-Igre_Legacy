@@ -3,6 +3,9 @@
 #include "main.h"
 #include "load_level.h"
 #include "select_level.h"
+
+#include <libconfig.h++>
+using namespace libconfig;
 //#define TPS 30.0
 
 bool allegro_init();
@@ -30,6 +33,117 @@ void save_save(struct LevelInst * level)
     fclose(output);
 }
 
+void load_config(config_data * config)
+{
+    Config cfg;
+    try{
+    cfg.readFile("config.cfg");
+    }
+    catch(const FileIOException &fioex)
+    {
+    std::cerr << "I/O error while reading file." << std::endl;
+    return;
+    }
+    catch(const ParseException &pex)
+    {
+    std::cerr << "Parse error at " << pex.getFile() << ":" << pex.getLine()
+              << " - " << pex.getError() << std::endl;
+    return;
+    }
+
+//render section
+
+
+  try{
+    config->default_display_width = cfg.lookup("default_display_width");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'default_display_width' setting in configuration file." << std::endl;
+    }
+    if(config->default_display_width < 1000) config->default_display_width = 1000;
+
+
+    try{
+    config->default_display_height = cfg.lookup("default_display_height");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'default_display_height' setting in configuration file." << std::endl;
+    }
+    if(config->default_display_height < 600) config->default_display_height = 600;
+
+
+    try{
+        config->particlesEnabled = cfg.lookup("particlesEnabled");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'particlesEnabled' setting in configuration file." << std::endl;
+    }
+
+
+
+    try{
+        config->verticalSyncEnabled = cfg.lookup("verticalSyncEnabled");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'verticalSyncEnabled' setting in configuration file." << std::endl;
+    }
+   
+    int MSAA;
+    try{
+        MSAA = cfg.lookup("MSAA");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'MSAA' setting in configuration file." << std::endl;
+    }
+    if(MSAA < 0) MSAA = 0;
+    if(MSAA > 8) MSAA = 8;
+    config->MSAA = MSAA;
+    
+    try{
+        config->oglEnabled = cfg.lookup("oglEnabled");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'oglEnabled' setting in configuration file." << std::endl;
+    }
+
+//gameplay section
+
+    try{
+        config->FPS = cfg.lookup("FPS");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'FPS' setting in configuration file." << std::endl;
+    }
+    if(config->FPS <= 0.) config->FPS = 60.;
+
+    try{
+        config->fadeDistance = cfg.lookup("fadeDistance");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'fadeDistance' setting in configuration file." << std::endl;
+    }
+    if(config->fadeDistance < 0.) config->fadeDistance = 800.;
+
+    try{
+        config->fadingLength = cfg.lookup("fadingLength");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'fadingLength' setting in configuration file." << std::endl;
+    }
+    if(config->fadingLength < 0.) config->fadingLength = 200.;
+
+
+}
+
 
 
 
@@ -37,18 +151,37 @@ int main()
 {
 srand(time(NULL));
 if(!allegro_init()) return 1;
-al_set_new_display_flags(ALLEGRO_OPENGL);
+
+asset_data * assets = new asset_data;
+*assets = {.config = 
+    {.scaleUI = 1.,
+    .default_display_width = 1000,
+    .default_display_height = 600,
+    .particlesEnabled = 1,
+    .verticalSyncEnabled = 0,
+    .MSAA = 8,
+    .FPS = 60,
+    .fadeDistance = 800,
+    .fadingLength = 200
+    }
+    };
+load_config(&assets->config);
+
+if(assets->config.oglEnabled) al_set_new_display_flags(ALLEGRO_OPENGL);
 al_set_new_display_flags(ALLEGRO_RESIZABLE);
+if(assets->config.MSAA)
+{
 al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
-al_set_new_display_option(ALLEGRO_SAMPLES, 8, ALLEGRO_SUGGEST);
+al_set_new_display_option(ALLEGRO_SAMPLES, assets->config.MSAA, ALLEGRO_SUGGEST);
+}
 al_set_new_display_option(ALLEGRO_RENDER_METHOD, 1, ALLEGRO_SUGGEST);
 
 allegro5_data alleg5;
-alleg5.display = al_create_display(default_window_width,default_window_height);
+alleg5.display = al_create_display(assets->config.default_display_width,assets->config.default_display_height);
 
 alleg5.queue = al_create_event_queue();
 alleg5.font = al_load_ttf_font("font.ttf",12,0);
-alleg5.timer = al_create_timer(1.0/FPS);
+alleg5.timer = al_create_timer(1.0/(double)assets->config.FPS);
 
 al_register_event_source(alleg5.queue,al_get_keyboard_event_source());
 al_register_event_source(alleg5.queue,al_get_mouse_event_source());
@@ -58,7 +191,10 @@ al_register_event_source(alleg5.queue,al_get_timer_event_source(alleg5.timer));
 
 if(!alleg5.display) return 0;
 bool kill = 0;
-asset_data * assets = new asset_data;
+
+
+
+
 texture_init(assets,1);
 struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}}, .custom_stat = {nullptr,nullptr,nullptr,nullptr}}};
 for(int i = 0; i< ENUM_JET_TYPE_FIN; i++) lvl.player.mod[i].engaged = false;

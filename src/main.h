@@ -4,19 +4,21 @@
 
 
 
-#define FPS 60.0
 #define default_window_width 1000
 #define default_window_height 600
-#define particlesEnabled 1
 
 struct config_data
 {
-float scaleUI; //0 to automatic
+float scaleUI; 
 unsigned int default_display_width;
 unsigned int default_display_height;
-bool particlesEnable;
+bool particlesEnabled;
 bool verticalSyncEnabled;
 unsigned short MSAA;
+bool oglEnabled;
+float FPS;
+float fadeDistance;
+float fadingLength;
 };
 
 

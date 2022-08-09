@@ -174,9 +174,9 @@ switch(type)
     }
 
 }
-if(F_Action) desc + "Press F to confirm"; //F podmień
-if(F_Action && Z_Action) desc + "\n";
-if(Z_Action) desc + "Press Z to deny";
+if(F_Action) desc += "Press F to confirm"; //F podmień
+if(F_Action && Z_Action) desc += "\n";
+if(Z_Action) desc += "Press Z to deny";
 
 
 prompt_screen prompt = {.type=type,{.x = display_width/2 + 25 * level->prompt_q.size(), .y = display_height/2 + 15 * level->prompt_q.size(), .width = width, .height = height,.name = title, .desc = desc},.decay = decay, .F_Action = F_Action, .Z_Action = Z_Action};
@@ -246,7 +246,7 @@ int window_height = al_get_display_height(alleg5->display);
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
     float dist = distance(player,object);
-    if(dist < 1000) 
+    if(dist < asset->config.fadeDistance + asset->config.fadingLength) 
     {
     float x_dist = object->curr.x - player->curr.x;
     float y_dist = object->curr.y - player->curr.y;
@@ -256,7 +256,7 @@ int window_height = al_get_display_height(alleg5->display);
 
     int full_hp = asset->jet_data[object->type].hp;
 
-    if(dist < 800)
+    if(dist < asset->config.fadeDistance)
     {
     al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
     x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);

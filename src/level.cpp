@@ -61,8 +61,8 @@ riven * spawn_riven()
         .engaged = true,
         .dualSided = (rand()%4 == 0 ? true: false),
     };
+    mod.type[2] = 0;
     mod.type[3] = 0;
-    mod.type[4] = 0;
 
 
         short pos = 0;

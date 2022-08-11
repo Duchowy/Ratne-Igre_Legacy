@@ -254,10 +254,10 @@ switch(object->mode)
 bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator reference)
 {//fix conditionless spot
     bool elegible = 0;
-    if( object->hp < 30 && input_vec.size() > 2)
+    if(input_vec.size() > 2)
     {
         std::vector<JetInst>::iterator found = findJet(input_vec,object->botTarget);
-        if(found != input_vec.end() && found != reference && distance(object,findJet(input_vec,object->botTarget)) > 150 && distance(object,reference) < 900)
+        if(found != input_vec.end() && found != reference && distance(object,findJet(input_vec,object->botTarget)) > 150 && distance(object,reference) < 900) //ally exists and is retreating
         {
             elegible = 1;
         }
@@ -267,7 +267,7 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
             && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > 3. * PI / 4.
         )
         {
-                float min_distance = 1200;
+                float min_distance = 1400;
             for(std::vector<JetInst>::iterator ally = input_vec.begin(); ally != input_vec.end(); ally++)
             {
                 if(ally == reference || ally == object || ally->mode != PATROL) continue;
@@ -281,7 +281,9 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
             }
         }
     }
-    if(elegible && fabs(rad_distance(object,reference)) > 3. * PI / 5. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > PI / .2) object->at_work = true;
+    if(elegible && 
+    fabs(rad_distance(object,reference)) > (float) PI / 2. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > (float) PI / .2
+    ) object->at_work = true;
     else object->at_work = false;
 
      
@@ -301,6 +303,9 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
 
     bool triggered = 0;
     bool retreating = 0;
+
+
+
     if(limit->jet_data[object->type].isBoss)
     {
         triggered = 1;
@@ -334,38 +339,52 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     {
         float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120;
         
-        if(elegibleForRetreat(input_vec,object,player)) 
+        if(
+            (object->mode == PATROL   &&  (dist < 350 && fabs(rad_distance(object,player)) < PI/6 || dist < conditionlessSpot) ) ||
+            (object->mode == DOGFIGHT) ||
+            (object->mode == PURSUIT &&  dist < 350) ||
+            (object->mode == RETREAT)
+        )
         {
-            retreating = true;
+            if(object->hp > 30)
+            {
+                triggered = 1;
+            }else
+            {
+                if(elegibleForRetreat(input_vec,object,player))
+                {
+                    if(object->at_work) object->mode = RETREAT;
+                    else //surroundings check
+                    {
+                        if(dist<conditionlessSpot) 
+                        {
+                            //printf("Our angle difference: %.2f\n",fabs(angle_difference(object->curr.turn_angle,player->curr.turn_angle)));
+                            triggered = 1;
+                        }
+                        
+                        else object->mode = RETREAT;
+                    }
+                }
+                else
+                {
+                    triggered = 1;
+                }
+            }
+        }
+        else
+        {
+            object->mode = PATROL;
+            object->botTarget = -1;
+            object->at_work = 0;
         }
 
-
-        if(object->mode == PURSUIT &&  dist < 350 && !retreating) //at pursuit
-        {
-            triggered = 1;
-        }
-        if(  (object->mode == PATROL)   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)   ))
-        {
-            triggered = 1;
-        }
-        if( (object->mode == PATROL  &&  dist < conditionlessSpot) || (dist < conditionlessSpot && !object->at_work))
-        {
-            triggered = 1;
-        }
-
-        
-        
-        if(object->mode == DOGFIGHT && !retreating) triggered = 1;
     }
 
 
 
 
 
-    if(retreating)
-    {
-        object->mode = RETREAT;
-    }
+
     if(triggered)
     {
         if(dist < 160) object->mode = DOGFIGHT;
@@ -373,13 +392,6 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         object->at_work = 0;
         object->botTarget = 0;
     }
-    else if(!retreating)
-    {
-        object->mode = PATROL;
-        object->botTarget = -1;
-        object->at_work = 0;
-    }
-
 
 }
 
@@ -387,12 +399,11 @@ if(input_vec.size() > 2)
 {
     #pragma omp parallel for
     for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
-    {
-        if(object->mode != PATROL) continue;
+        {
         float obj_dist = distance(object,player);
         for(std::vector<JetInst>::iterator ally = object+1; ally != input_vec.end(); ally++)
                 {
-                    if( (object->mode != PATROL) == (ally->mode != PATROL) || ally->mode == RETREAT) continue;
+                    if( (object->mode != PATROL) == (ally->mode != PATROL)) continue;
                     float dist_between = distance(object,ally);
                     float aly_dist = distance(ally,player);
                     #pragma omp critical
@@ -401,7 +412,7 @@ if(input_vec.size() > 2)
                         {
                             if(object->mode != PATROL)
                             {
-                                if(aly_dist < 450)
+                                if(aly_dist < 450 && ally->mode != RETREAT)
                                 {
                                     if(aly_dist < 160) ally->mode = DOGFIGHT;
                                     else ally->mode = PURSUIT;
@@ -411,7 +422,7 @@ if(input_vec.size() > 2)
                             }
                             else
                             {
-                                if(obj_dist < 450)
+                                if(obj_dist < 450 && object->mode != RETREAT)
                                 {
                                     if(obj_dist < 160) object->mode = DOGFIGHT;
                                     else object->mode = PURSUIT;

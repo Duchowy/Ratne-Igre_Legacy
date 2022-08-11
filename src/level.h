@@ -1,5 +1,5 @@
 #ifndef PI
-#define PI (atan(1)*4)
+#define PI (atan(1.)*4.)
 #endif
 
 

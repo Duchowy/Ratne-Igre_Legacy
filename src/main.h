@@ -18,6 +18,10 @@ unsigned short MSAA;
 bool oglEnabled;
 bool autoUIscale;
 float UIscale; 
+float zoomUpperLimit;
+float zoomLowerLimit;
+short radarType;
+bool additionalRadar;
 float FPS;
 float fadeDistance;
 float fadingLength;
@@ -51,5 +55,5 @@ struct Particle prt_data[ENUM_PRT_TYPE_FIN];
 };
 
 
-
+float calculateUIscale(float width, float height);
 #endif

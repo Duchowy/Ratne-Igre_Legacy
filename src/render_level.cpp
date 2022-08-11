@@ -228,8 +228,8 @@ if(direction > 0) assets->scale_factor+=0.1;
 if(direction < 0) assets->scale_factor-=0.1;
 
 
-if(assets->scale_factor < 0.8) assets->scale_factor = 0.8;
-if(assets->scale_factor > 1.0) assets->scale_factor = 1.0;
+if(assets->scale_factor < assets->config.zoomLowerLimit) assets->scale_factor = assets->config.zoomLowerLimit;
+if(assets->scale_factor > assets->config.zoomUpperLimit) assets->scale_factor = assets->config.zoomUpperLimit;
 al_set_mouse_z(0); //ticker bound
 }
 
@@ -367,7 +367,7 @@ int window_width = al_get_display_width(alleg5->display);
 int window_height = al_get_display_height(alleg5->display);
 
 std::vector<JetInst>::iterator player = level->jet_q.begin();
-al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_height,al_map_rgb(0,20,20));
+al_draw_filled_rectangle(window_width- asset->config.UIscale * 80,window_height - asset->config.UIscale*35,window_width,window_height,al_map_rgb(0,20,20));
 
 /*########
 ### HUD ##
@@ -379,15 +379,34 @@ al_draw_filled_rectangle(window_width-80,window_height-35,window_width,window_he
 /*########
 ### HP ###
 ########*/
-
-
+{
+char const * HP_text;
+ALLEGRO_COLOR HP_color;
 float current_HP = (float) player->hp / asset->jet_data[player->type].hp;
-if(current_HP > 0.9) al_draw_text(alleg5->font,al_map_rgb(0,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20,0,"OK");
-else if ( current_HP > 0.7) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"OK")-10,window_height-20, 0,"OK");
-else if( current_HP > 0.3) al_draw_text(alleg5->font,al_map_rgb(240,240,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
-else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_width(alleg5->font,"Damaged")-10,window_height-20,0,"Damaged");
+if(current_HP > 0.9)
+{
+    HP_text = "OK";
+    HP_color = al_map_rgb(0,240,0);
+}
+else if ( current_HP > 0.7)
+{
+    HP_text = "OK";
+    HP_color = al_map_rgb(240,240,0);
 
+}
+else if( current_HP > 0.3) 
+{
+    HP_text = "Damaged";
+    HP_color = al_map_rgb(240,240,0);
+}
+else
+{
+    HP_text = "Damaged";
+    HP_color = al_map_rgb(240,0,0);
+}
 
+al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,HP_text)-10 * asset->config.UIscale,window_height-20*asset->config.UIscale,0,HP_text);
+}
 
 
 /*########
@@ -397,7 +416,8 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
     bool SPCisGun = (player->weapon[2].launcher->projectile - asset->proj_data < ENUM_BULLET_TYPE_FIN)  ;
 
 
-    al_draw_filled_rectangle(0,window_height,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5,window_height-20,al_map_rgb(0,20,20));                                                 //font theme
+    al_draw_filled_rectangle(0,window_height,(al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5) * asset->config.UIscale
+    ,window_height- 20 * asset->config.UIscale,al_map_rgb(0,20,20));                                                 //font theme
 
     float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo * asset->jet_data[player->type].weapon_mult[0]);
     float mag_percentage = (float) player->weapon[0].magazine / player->weapon[0].launcher->magazine;
@@ -406,9 +426,9 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
     
 //ammo indicator
     ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );
-    al_draw_filled_rectangle(0,window_height-20, al_get_text_width(alleg5->font,"GUN"), window_height -20 - rectangle_height*ammo_percentage,ammo_color);    
+    al_draw_filled_rectangle(0,window_height-20 * asset->config.UIscale, al_get_text_width(alleg5->font,"GUN") * asset->config.UIscale, window_height -20* asset->config.UIscale - rectangle_height*ammo_percentage* asset->config.UIscale,ammo_color);    
     
-    
+    //mag cooler
     if(mag_percentage <= 0.4)
     {
     al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
@@ -422,18 +442,20 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
 
     bool used;
     used = (player->weapon[0].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-10,0,"GUN");
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-12* asset->config.UIscale,0,"GUN");
     used = (player->weapon[1].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5,window_height-10,0,"MSL");    //rocket bar
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(al_get_text_width(alleg5->font,"GUN")+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"MSL");    //rocket bar
     used = (player->weapon[2].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-10,0,"SPC");    //rocket bar
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"SPC");    //rocket bar
 
 //missile indicator
     for(int i = 0; i< player->weapon[1].ammo; i++)
     {
     ALLEGRO_COLOR bar_color = al_map_rgb(200,180,100);//al_map_rgb(240,230,140);
     if(i+player->weapon[1].magazine >= player->weapon[1].ammo) bar_color = al_map_rgb(240,120,60);
-    al_draw_line(al_get_text_width(alleg5->font,"GUN")+5,window_height-20.5 -3*i ,al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL"),window_height-20.5 -3*i,
+    al_draw_line((al_get_text_width(alleg5->font,"GUN")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
+    
+    (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL"))* asset->config.UIscale ,window_height-20.5* asset->config.UIscale -3*i,
     bar_color,1);
     }
 //special indicator
@@ -452,8 +474,8 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
         }
         
         al_draw_filled_rectangle(
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5,window_height-20,
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5, window_height -20 - rectangle_height*ammo_percentage,ammo_color
+        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-20* asset->config.UIscale,
+        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5)* asset->config.UIscale, window_height -20* asset->config.UIscale - rectangle_height*ammo_percentage* asset->config.UIscale,ammo_color
         );    
 
     }
@@ -465,8 +487,8 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
     ALLEGRO_COLOR bar_color = al_map_rgb(250,250,250);
     if(i+player->weapon[2].magazine >= player->weapon[2].ammo) bar_color = al_map_rgb(200,180,100);
     al_draw_line(
-        al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5,window_height-20.5 -3*i ,
-        al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5,window_height-20.5 -3*i,
+        (al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
+        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i,
     bar_color,1);
     }
 
@@ -487,26 +509,53 @@ else al_draw_text(alleg5->font,al_map_rgb(240,0,0),window_width-al_get_text_widt
 ## RADAR #
 ########*/
 
+switch(asset->config.radarType)
+{
+case 1:
+{
+    float rad_range_delimiter = player->curr.turn_angle+fabs(level->radar.range_rad);
+    al_draw_line(window_width/2 + 20*cos(rad_range_delimiter), window_height/2 + 20*sin(rad_range_delimiter),
+            window_width/2 + (20 + 16 * asset->config.UIscale )*cos(rad_range_delimiter) ,window_height/2 + (20 + 16* asset->config.UIscale)*sin(rad_range_delimiter) ,
+            al_map_rgb(240,240,240),0.8);
+    rad_range_delimiter = player->curr.turn_angle-fabs(level->radar.range_rad);
+    al_draw_line(window_width/2 + 20*cos(rad_range_delimiter), window_height/2 + 20*sin(rad_range_delimiter),
+            window_width/2 + (20 + 16 * asset->config.UIscale )*cos(rad_range_delimiter) ,window_height/2 + (20 + 16* asset->config.UIscale)*sin(rad_range_delimiter) ,
+            al_map_rgb(240,240,240),0.8);
 
-/*
+
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
         float rad_dist = rad_distance(player,object);
-        if(distance(player,object) < 1800 && fabs(rad_dist) < PI/6 && !asset->jet_data[object->type].isBoss) 
+        if(distance(player,object) < level->radar.range_dist && fabs(rad_dist) < level->radar.range_rad && !asset->jet_data[object->type].isBoss) 
         {
             ALLEGRO_COLOR indicator;
-            if(distance(player,object) < 800) indicator = al_map_rgb(240,240,0);
+            if(distance(player,object) < asset->config.fadeDistance + asset->config.fadingLength) indicator = al_map_rgb(240,240,0);
             else indicator = al_map_rgb(0,240,0);
-            al_draw_line(window_width/2 + 14*cos(rad_pointer),window_height/2 + 14*sin(rad_pointer),
-            window_width/2 + 28*cos(rad_pointer),window_height/2 + 28*sin(rad_pointer),
+            al_draw_line(window_width/2 + 14*cos(rad_pointer), window_height/2 + 14*sin(rad_pointer),
+            window_width/2 + (14 + 30 * asset->config.UIscale)*cos(rad_pointer) ,window_height/2 + (14 + 30 * asset->config.UIscale)*sin(rad_pointer) ,
             indicator,0.8);
+
+            if(player->botTarget == object->ID)
+            {
+                indicator = al_map_rgb(240,0,0);
+                al_draw_line(window_width/2 + (14 + 18 * asset->config.UIscale)*cos(rad_pointer), window_height/2 + (14 + 18 * asset->config.UIscale)*sin(rad_pointer),
+                window_width/2 + (14 + 30 * asset->config.UIscale)*cos(rad_pointer),window_height/2 + (14 + 30 * asset->config.UIscale)*sin(rad_pointer) ,
+                indicator,0.8);
+            }
         }
         
 
     }
-*/
+    if(level->radar.mode == 2)
+    {
+    if(player->botTarget != -1) al_draw_filled_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
+    al_draw_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
 
+    }
+}
+break;
+case 2:
 {
 ALLEGRO_COLOR indicator;
 if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
@@ -515,20 +564,20 @@ float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_ang
 
 
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_filled_pieslice(window_width/2,window_height/2,48,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
+al_draw_filled_pieslice(window_width/2,window_height/2,48 * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
 
 if(level->radar.mode == 2)
 {
-if(player->botTarget != -1) al_draw_filled_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.06), window_height/2 + 32 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.06),4,al_map_rgba(120,0,0,122));
-al_draw_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.09), window_height/2 + 32 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.09),4,al_map_rgb(0,0,0), 1 );
+if(player->botTarget != -1) al_draw_filled_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
+al_draw_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
 
 }
 
 for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
 {
     float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
-    float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
-    float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist);
+    float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
+    float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
     float opacity;
     
     switch(level->radar.mode)
@@ -547,27 +596,106 @@ for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); objec
 
 
         al_draw_filled_circle(x_pos, y_pos,
-        2,(
+        2* asset->config.UIscale,(
         object->isTarget ? 
         al_map_rgba_f(0.98,0.04,0.04,opacity) :
         al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
         )
         );
-        al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
+        al_draw_circle(x_pos,y_pos,2* asset->config.UIscale - 0.7,al_map_rgba_f(0,0,0,opacity),0.7);
 
 }
-al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle),window_height/2 + 18*sin(player->curr.turn_angle),
-            window_width/2 + 48*cos(player->curr.turn_angle),window_height/2 + 48*sin(player->curr.turn_angle),
+al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle), window_height/2 + 18*sin(player->curr.turn_angle),
+            window_width/2 + 48*cos(player->curr.turn_angle) * asset->config.UIscale, window_height/2 + 48*sin(player->curr.turn_angle)* asset->config.UIscale,
             al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
 
-al_draw_arc(window_width/2,window_height/2,30,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8);
+al_draw_arc(window_width/2,window_height/2,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
 
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_pointer),
-            window_width/2 + 48*cos(rad_pointer),window_height/2 + 48*sin(rad_pointer),
+            window_width/2 + 48*cos(rad_pointer)* asset->config.UIscale,window_height/2 + 48*sin(rad_pointer)* asset->config.UIscale,
             indicator,0.8); //radar seeker line
 
 }
+break;
+}
+
+
+if(asset->config.additionalRadar)
+{
+	float radar_x_offset = window_width / 6;
+	float radar_y_offset = window_height/2;
+
+    ALLEGRO_COLOR indicator;
+    if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
+    else indicator = al_map_rgb(0,240,0);
+    float rad_pointer = angle_addition(-PI/2,level->radar.turn_angle);
+
+
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+    al_draw_filled_pieslice(radar_x_offset,radar_y_offset,48 * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f( 0.2,0.2,0.2,0.7));
+
+    if(level->radar.mode == 2)
+    {
+    if(player->botTarget != -1) al_draw_filled_circle(radar_x_offset + 30 * cos(-PI/2-fabs(level->radar.range_rad) - 0.12), radar_y_offset + 30 * sin(-PI/2-fabs(level->radar.range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
+    al_draw_circle(radar_x_offset + 30 * cos(-PI/2-fabs(level->radar.range_rad) - 0.12), radar_y_offset + 30 * sin(-PI/2-fabs(level->radar.range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
+
+    }
+
+    for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
+    {
+        float node_pointer = angle_addition(-PI/2,object->rad_dist);
+        float x_pos = radar_x_offset + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
+        float y_pos = radar_y_offset +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
+        float opacity;
+        
+        switch(level->radar.mode)
+        {
+            case 0:
+            opacity = 1 - pow(1 - (float) object->decay/48,4);
+            break;
+            case 1:
+            opacity = 1 - pow(1 - (float) object->decay/24,2);
+            break;
+            case 2:
+            opacity = 1 - pow(1 - (float) object->decay/24,2);
+            break;
+        }
+
+
+
+            al_draw_filled_circle(x_pos, y_pos,
+            2* asset->config.UIscale,(
+            object->isTarget ? 
+            al_map_rgba_f(0.98,0.04,0.04,opacity) :
+            al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+            )
+            );
+            al_draw_circle(x_pos,y_pos,2* asset->config.UIscale - 0.7,al_map_rgba_f(0,0,0,opacity),0.7);
+
+    }
+    al_draw_line(radar_x_offset + 18*cos(-PI/2), radar_y_offset + 18*sin(-PI/2),
+                radar_x_offset + 48*cos(-PI/2) * asset->config.UIscale, radar_y_offset + 48*sin(-PI/2)* asset->config.UIscale,
+                al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
+
+    al_draw_arc(radar_x_offset,radar_y_offset,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
+
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    al_draw_line(radar_x_offset + 18*cos(rad_pointer),radar_y_offset + 18*sin(rad_pointer),
+                radar_x_offset + 48*cos(rad_pointer)* asset->config.UIscale,radar_y_offset + 48*sin(rad_pointer)* asset->config.UIscale,
+                indicator,0.8); //radar seeker line
+
+}
+
+
+
+
+
+
+
+
+
+
 
 al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
     window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);

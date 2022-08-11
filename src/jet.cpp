@@ -31,7 +31,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
         object.alter->target_angle = object.curr.turn_angle;
         object.alter->speed_mode = 2;
         object.alter->turn_speed = 0;
-        if(!gun->projectile->trait.DMGfall && object.target >= 0 && object.type == RAD_M)  object.decay +=30;
+        if(!gun->projectile->trait.DMGfall && object.target >= 0 && object.type == RAD_M)  object.decay +=50;
     }
 
 

@@ -289,6 +289,7 @@ while(!kill && !quit)
         case ALLEGRO_EVENT_DISPLAY_RESIZE:
         {
             al_acknowledge_resize(alleg5->display); 
+            if(assets->config.autoUIscale) assets->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
             update_button_pos(button,button_click,alleg5);
         }
         break;
@@ -409,7 +410,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
     enemy_spawn(level,asset);
     
-    asset->scale_factor = 1.0;
+    asset->scale_factor = asset->config.zoomUpperLimit;
 
 
     return MISSION;
@@ -449,8 +450,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         }
         case INDIA:
         {
-        //int amnt[] = {8,6,0,1,0,0};
-        int amnt[] = {0,0,0,12,0,0};
+        int amnt[] = {8,6,0,1,0,0};
+        //int amnt[] = {0,0,0,12,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);

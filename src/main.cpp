@@ -33,6 +33,15 @@ void save_save(struct LevelInst * level)
     fclose(output);
 }
 
+float calculateUIscale(float width, float height)
+{
+float widthRatio = width / 1000.;
+float heightRatio = height / 600.;
+if(widthRatio > heightRatio) return heightRatio;
+else return widthRatio;
+}
+
+
 void load_config(config_data * config)
 {
     Config cfg;
@@ -101,7 +110,7 @@ void load_config(config_data * config)
     std::cerr << "No 'MSAA' setting in configuration file." << std::endl;
     }
     if(MSAA < 0) MSAA = 0;
-    if(MSAA > 8) MSAA = 8;
+    if(MSAA > 3) MSAA = 3;
     config->MSAA = MSAA;
     
     try{
@@ -135,10 +144,55 @@ try{
     }
 if(config->UIscale <= 0) config->UIscale = 1.;
 }
-    
-    
+else config->UIscale = calculateUIscale(config->default_display_width, config->default_display_height);
 
 
+
+
+
+try{
+        config->zoomUpperLimit = cfg.lookup("zoomUpperLimit");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'zoomUpperLimit' setting in configuration file." << std::endl;
+    }
+if(config->zoomUpperLimit < 0) config->zoomUpperLimit = 1.0;
+
+try{
+        config->zoomLowerLimit = cfg.lookup("zoomLowerLimit");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'zoomLowerLimit' setting in configuration file." << std::endl;
+    }
+
+if(config->zoomLowerLimit < 0) config->zoomLowerLimit = 0.8;
+if(config->zoomLowerLimit > config->zoomUpperLimit) config->zoomUpperLimit = config->zoomLowerLimit + 0.2;
+
+
+
+
+
+
+
+
+try{
+        config->radarType = (int)cfg.lookup("radarType");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'radarType' setting in configuration file." << std::endl;
+    } 
+if(config->radarType < 0) config->radarType = 1;
+
+try{
+        config->additionalRadar = cfg.lookup("additionalRadar");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'additionalRadar' setting in configuration file." << std::endl;
+    }
 
 
 
@@ -188,11 +242,15 @@ asset_data * assets = new asset_data;
     {
     .default_display_width = 1000,
     .default_display_height = 600,
-    .particlesEnabled = 1,
+    .particlesEnabled = true,
     .verticalSyncEnabled = 0,
-    .MSAA = 8,
+    .MSAA = 2,
     .autoUIscale = 0,
     .UIscale = 1.,
+    .zoomUpperLimit = 1.0,
+    .zoomLowerLimit = 0.8,
+    .radarType = 1,
+    .additionalRadar = false,
     .FPS = 60,
     .fadeDistance = 800,
     .fadingLength = 200
@@ -204,7 +262,7 @@ if(assets->config.oglEnabled) al_set_new_display_flags(ALLEGRO_OPENGL);
 al_set_new_display_flags(ALLEGRO_RESIZABLE);
 if(assets->config.MSAA)
 {
-al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_SUGGEST);
+al_set_new_display_option(ALLEGRO_SAMPLE_BUFFERS, 1, ALLEGRO_REQUIRE);
 al_set_new_display_option(ALLEGRO_SAMPLES, assets->config.MSAA, ALLEGRO_SUGGEST);
 }
 al_set_new_display_option(ALLEGRO_RENDER_METHOD, 1, ALLEGRO_SUGGEST);

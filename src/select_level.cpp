@@ -19,9 +19,9 @@ struct node
     int type;
 };
 
-void debug_data(struct camera * ref, ALLEGRO_FONT * font)
+void debug_data(allegro5_data * alleg5,struct camera * ref)
 {
-    al_draw_multiline_textf(font,al_map_rgb(240,0,240),5,5,200,10,0,"%d x_pos\n %d y_pos",ref->x_pos,ref->y_pos);
+    al_draw_multiline_textf(alleg5->font,al_map_rgb(240,0,240),5,5,200,10,0,"%d x_pos\n %d y_pos\nMSAA flag: %d",ref->x_pos,ref->y_pos,al_get_display_option(alleg5->display,ALLEGRO_SAMPLES));
 }
 
 
@@ -101,7 +101,7 @@ if(prompt != nullptr)
 
 
 #ifdef DEBUG
-    debug_data(ref,alleg5->font);
+    debug_data(alleg5,ref);
 #endif
 
 al_flip_display();
@@ -181,6 +181,7 @@ while(!kill && !quit)
     {
         case ALLEGRO_EVENT_DISPLAY_RESIZE:
         {
+            if(asset->config.autoUIscale) asset->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
             al_acknowledge_resize(alleg5->display); 
         }
         break;

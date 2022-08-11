@@ -549,6 +549,7 @@ while(!kill)
         case ALLEGRO_EVENT_DISPLAY_RESIZE: 
         {
         al_acknowledge_resize(alleg5->display);
+        if(assets->config.autoUIscale) assets->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
         render(lvl,assets,alleg5);
         }
         break;

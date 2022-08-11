@@ -14,7 +14,7 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FON
             {
                 case 0: buffer = std::to_string(object->alter.turn_speed); break;
                 //case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
-                case 2: buffer = std::to_string(object->target_angle)+" target"; break;
+                case 2: buffer = std::to_string(object->alter.target_angle)+" target"; break;
                 case 3: buffer = std::to_string(object->alter.turn_speed)+" turn speed"; break;
                 case 4: buffer = std::to_string(object->curr.speed)+" speed"; break;
                 case 5: buffer = std::to_string(object->weapon[0].engaged)+" shoot"; break;
@@ -290,7 +290,8 @@ int window_height = al_get_display_height(alleg5->display);
 
     }
     #ifdef DEBUG
-        al_draw_text(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,std::to_string(object->mode).c_str());
+        al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
+        al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->ID);
     #endif
 
 

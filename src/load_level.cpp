@@ -202,7 +202,7 @@ for(int i = 0 ; i< 3; i++)
     al_draw_line(button[0].x - 50,button[0].y-graph_pos_y - 25 -i*25,button[0].x + 50,button[0].y-graph_pos_y - 25 -i*25,al_map_rgb(240,240,240),0.6);
     al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-graph_pos_y-30-i*25,0,"%.2f",(float)(i+1)*0.25 );
 }
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-graph_pos_y - 100 - 10,0,"%°/s");
+al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x - 90,button[0].y-graph_pos_y - 100 - 10,0,"%%deg/s");
 al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[0].x + 80,button[0].y-graph_pos_y,0,"IAS");
 
 
@@ -220,22 +220,25 @@ button[0].x - 50 + primary->high_pos,button[0].y-graph_pos_y - primary->node[pri
 al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50 + primary->low_pos ,button[0].y-graph_pos_y,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[0]);
 al_draw_textf(alleg5->font,al_map_rgb(240,240,240),button[0].x - 50 + primary->high_pos,button[0].y-graph_pos_y,ALLEGRO_ALIGN_CENTRE,"%.2f",assets->jet_data[player->choice.player_jet].alter_limit.speed_limit[1]);
 
+al_draw_textf(alleg5->font,al_map_rgb(120,120,0),button[0].x - 120,button[0].y-graph_pos_y-250,0,"%.2f max deg/s",assets->jet_data[player->choice.player_jet].alter_limit.alter.turn_speed * 180. / PI * assets->config.FPS);
+
+
 
 if(player->mod[player->choice.player_jet].engaged)
 {
-
-for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-graph_pos_y - secondary->node[i],al_map_rgb(240,180,100));
+ALLEGRO_COLOR color_override = al_map_rgb(240,180,100);
+for(int i = 0; i<100; i++) al_draw_pixel(button[0].x - 50+i,button[0].y-graph_pos_y - secondary->node[i],color_override);
 al_draw_line(button[0].x - 50 + secondary->low_pos,  button[0].y-graph_pos_y,
-button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y - secondary->node[secondary->low_pos],al_map_rgb(240,180,100),0.5);
+button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y - secondary->node[secondary->low_pos],color_override,0.5);
 al_draw_line(button[0].x - 50 + secondary->mid_pos,  button[0].y-graph_pos_y,
-button[0].x - 50 + secondary->mid_pos,button[0].y-graph_pos_y - secondary->node[secondary->mid_pos],al_map_rgb(240,180,100),0.5);
+button[0].x - 50 + secondary->mid_pos,button[0].y-graph_pos_y - secondary->node[secondary->mid_pos],color_override,0.5);
 al_draw_line(button[0].x - 50 + secondary->high_pos,  button[0].y-graph_pos_y,
-button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y - secondary->node[secondary->high_pos],al_map_rgb(240,180,100),0.5);
+button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y - secondary->node[secondary->high_pos],color_override,0.5);
 
-al_draw_textf(alleg5->font,al_map_rgb(240,180,100),button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[0]);
-al_draw_textf(alleg5->font,al_map_rgb(240,180,100),button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[1]);
+al_draw_textf(alleg5->font,color_override,button[0].x - 50 + secondary->low_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[0]);
+al_draw_textf(alleg5->font,color_override,button[0].x - 50 + secondary->high_pos,button[0].y-graph_pos_y+10,ALLEGRO_ALIGN_CENTRE,"%.2f",player->custom_stat[player->choice.player_jet]->speed_limit[1]);
 
-
+al_draw_textf(alleg5->font,color_override,button[0].x ,button[0].y-graph_pos_y-250,0,"-> %.2f max deg/s",assets->jet_data[player->choice.player_jet].alter_limit.alter.turn_speed * 180. / PI * assets->config.FPS);
 }
 
 
@@ -381,6 +384,7 @@ void destroy_level(asset_data * asset, LevelInst * level)
     level->radar.node_q.clear();
     level->prompt_q.clear();
     level->tick = 0;
+    level->nextID = 0;
     level->pauseEngaged = false;
     level->finished = false;
     level->finalPromptEngaged = false;
@@ -398,11 +402,13 @@ int spawn_level(asset_data * asset, LevelInst * level)
 
     refresh_riven(level,asset);
     std::copy(asset->lvl_data[level->level_name].enemy_quality, asset->lvl_data[level->level_name].enemy_quality+ENUM_BOSS_TYPE_FIN,level->enemy_quality);
-    JetInst player = jet_spawn(asset,&level->player.choice,(level->player.mod[level->player.choice.player_jet].engaged ? level->player.custom_stat[level->player.choice.player_jet] : nullptr),0);
+    JetInst player = jet_spawn(asset,&level->player.choice,(level->player.mod[level->player.choice.player_jet].engaged ? level->player.custom_stat[level->player.choice.player_jet] : nullptr),0,level->nextID);
     level->jet_q.push_back(player);
+    level->nextID++;
     level->jet_q.front().curr.x = 300;
     level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
     enemy_spawn(level,asset);
+    
     asset->scale_factor = 1.0;
 
 
@@ -443,7 +449,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         }
         case INDIA:
         {
-        int amnt[] = {8,6,0,1,0,0};
+        //int amnt[] = {8,6,0,1,0,0};
+        int amnt[] = {0,0,0,12,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
         asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);

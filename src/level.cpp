@@ -86,25 +86,27 @@ riven * spawn_riven()
             else pos+=1;
         } while (pos < (mod.dualSided ? 4 : 2));
 
+
         qsort(mod.type,(mod.dualSided ? 4 : 2 ),sizeof(uint8_t),comparator);
 
 
         for(int i = 0; i < (mod.dualSided ? 4 : 2 ); i++ )
         {
 
-            if(
-                ((mod.type[i]-1)/3 == 0 ) || //v limits
-                ((mod.type[i]-1)/3 == 1 ) //engine power limit
-            ) 
+            if((mod.type[i] == 1 || mod.type[i] == 2 || mod.type[i] == 4 || mod.type[i] == 5)) //upper and lower bound, first pair velocity, second pair engine & airbrake power
             {
                 mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.1 + 1.0;
+            }
+            else if(mod.type[i] == 3 || mod.type[i] == 6) //simultanous upper and lower bound, velocity and engine/airbrake respectively
+            {
+                mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.08 + 1.0;
             }
             else
             {
                 switch(mod.type[i])
                 {
                     case 7: //turn speed
-                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) *0.01;
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) *0.007;
                     break;
                     case 8: //turn rate
                     mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) *0.005;
@@ -113,11 +115,8 @@ riven * spawn_riven()
                     mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.2;
                     break;
                     case 10: //coefficient
-                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.5;
+                    mod.value[i] = (i == 3 ? -1.0 : 1.0) * pow((double)rand()/RAND_MAX,2) * 0.3;
                     break;
-
-
-
                 }
             }
 
@@ -615,7 +614,7 @@ while(!kill)
         al_get_mouse_state(&mouse);
         if(mouse.buttons & 1) lvl->jet_q.front().weapon[0].engaged = 1; //left mouse button
         if(mouse.buttons & 2) lvl->jet_q.front().weapon[2].engaged = 1; //left mouse button
-        lvl->jet_q.front().target_angle = atan2((mouse.y-window_height/2) ,(mouse.x - window_width/2));
+        lvl->jet_q.front().alter.target_angle = atan2((mouse.y-window_height/2) ,(mouse.x - window_width/2));
         }
         if(lvl->jet_q.front().hp == 0) return MISSION_INIT;
 //temporary solution

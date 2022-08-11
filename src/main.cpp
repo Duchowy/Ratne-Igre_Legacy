@@ -176,9 +176,11 @@ al_set_new_display_option(ALLEGRO_SAMPLES, assets->config.MSAA, ALLEGRO_SUGGEST)
 }
 al_set_new_display_option(ALLEGRO_RENDER_METHOD, 1, ALLEGRO_SUGGEST);
 
+
 allegro5_data alleg5;
 alleg5.display = al_create_display(assets->config.default_display_width,assets->config.default_display_height);
-
+al_set_window_constraints(alleg5.display,1000,600,0,0);
+al_apply_window_constraints(alleg5.display,1);
 alleg5.queue = al_create_event_queue();
 alleg5.font = al_load_ttf_font("font.ttf",12,0);
 alleg5.timer = al_create_timer(1.0/(double)assets->config.FPS);

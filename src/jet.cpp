@@ -85,7 +85,7 @@ void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterato
     target_a[0] =  target->curr.x + offset*cos(target->curr.turn_angle)*target->curr.speed;
     target_a[1] = target->curr.y + offset*sin(target->curr.turn_angle)*target->curr.speed;
 
-object->target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
+object->alter.target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
 }
 
 void target(struct LevelInst * level, struct asset_data * asset)
@@ -144,6 +144,20 @@ for(std::vector<ProjInst>::iterator shell = level->proj_q.begin(); shell != leve
 
 }
 
+std::vector<JetInst>::iterator findJet(std::vector<JetInst> & input_vec, int ID)
+{
+for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_vec.end(); object++)
+{
+if(object->ID == ID) return object;
+}
+
+return input_vec.end();
+}
+
+
+
+
+
 void action(struct LevelInst * level, struct asset_data * asset)
 {
 std::vector<JetInst>::iterator player = level->jet_q.begin();
@@ -158,7 +172,7 @@ switch(object->mode)
         object->alter.speed_mode = AIRBRAKE;
         if(object->at_work)
         {
-            if(object->curr.turn_angle == object->target_angle) object->at_work = 0;
+            if(object->curr.turn_angle == object->alter.target_angle) object->at_work = 0;
             else break;
         }
         else
@@ -169,12 +183,12 @@ switch(object->mode)
                 int target_c[2] = {0,0};
                 target_c[0] = asset->lvl_data[level->level_name].map_width/2 + rand()%240-120;
                 target_c[1] = asset->lvl_data[level->level_name].map_height/14 * (rand()%13 + 1);
-                object->target_angle  = atan2(( target_c[1] - object->curr.y) ,(target_c[0] - object->curr.x));
+                object->alter.target_angle  = atan2(( target_c[1] - object->curr.y) ,(target_c[0] - object->curr.x));
+                object->at_work = 1;
             }
-            object->at_work = 1;
             if(!object->at_work)
             {
-                if(rand()%900 == 0) object->target_angle = (object->target_angle, (float)0.6 *rand()/RAND_MAX - 0.3);
+                if(rand()%900 == 0) object->alter.target_angle = angle_addition(object->alter.target_angle, (float)0.6 *rand()/RAND_MAX - 0.3);
             }
 
         }
@@ -183,7 +197,7 @@ switch(object->mode)
     case PURSUIT:
     {
         target(object,player,16);
-        if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
+        //if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
         {
             if(asset->jet_data[object->type].isBoss)
             {
@@ -191,7 +205,7 @@ switch(object->mode)
             }
             else
             {
-                if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
+                //if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
             }
 
             
@@ -204,8 +218,8 @@ switch(object->mode)
     case DOGFIGHT:
     {
         target(object,level->jet_q.begin(),8);
-        float rad_dist = angle_difference(object->curr.turn_angle,object->target_angle); //radial distance between object and target
-        if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
+        float rad_dist = angle_difference(object->curr.turn_angle,object->alter.target_angle); //radial distance between object and target
+        //if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
         if(fabs(rad_dist) > PI/2)
         {
             if(object->curr.speed > player->curr.speed) object->alter.speed_mode = AFTERBURNER;
@@ -216,6 +230,13 @@ switch(object->mode)
             if(object->curr.speed < player->curr.speed) object->alter.speed_mode = AIRBRAKE;
             else object->alter.speed_mode = STANDARD;
         }
+    }
+    break;
+    case RETREAT:
+    {
+    object->alter.speed_mode = AFTERBURNER;
+    std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,object->botTarget);
+    target(object,follow_target,8);
     }
     break;
 
@@ -229,6 +250,46 @@ switch(object->mode)
 
 }
 
+
+bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator reference)
+{//fix conditionless spot
+    bool elegible = 0;
+    if( object->hp < 30 && input_vec.size() > 2)
+    {
+        std::vector<JetInst>::iterator found = findJet(input_vec,object->botTarget);
+        if(found != input_vec.end() && found != reference && distance(object,findJet(input_vec,object->botTarget)) > 150 && distance(object,reference) < 900)
+        {
+            elegible = 1;
+        }
+        else if(
+            object->botTarget != -1   &&  //start retreating, had a target before but is disengaging now
+            distance(object,reference) < 450 && fabs(rad_distance(object,reference)) > 2. * PI / 3. 
+            && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > 3. * PI / 4.
+        )
+        {
+                float min_distance = 1200;
+            for(std::vector<JetInst>::iterator ally = input_vec.begin(); ally != input_vec.end(); ally++)
+            {
+                if(ally == reference || ally == object || ally->mode != PATROL) continue;
+                float ally_distance = distance(object,ally);
+                if(fabs(rad_distance(object,ally)) < PI/3. && ally_distance < min_distance)
+                {
+                    min_distance = ally_distance;
+                    object->botTarget = ally->ID;
+                    elegible = 1;
+                }
+            }
+        }
+    }
+    if(elegible && fabs(rad_distance(object,reference)) > 3. * PI / 5. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > PI / .2) object->at_work = true;
+    else object->at_work = false;
+
+     
+
+    return elegible;
+}
+
+
 //all boss abilities used & standard bot actions
 void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 {
@@ -239,6 +300,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     float dist = distance(object,player);
 
     bool triggered = 0;
+    bool retreating = 0;
     if(limit->jet_data[object->type].isBoss)
     {
         triggered = 1;
@@ -270,27 +332,58 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     }
     else
     {
-        if(object->mode == PURSUIT &&  dist < 350) //at pursuit
+        float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120;
+        
+        if(elegibleForRetreat(input_vec,object,player)) 
+        {
+            retreating = true;
+        }
+
+
+        if(object->mode == PURSUIT &&  dist < 350 && !retreating) //at pursuit
         {
             triggered = 1;
         }
-        if(  object->mode == PATROL   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)  ||  dist < 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120 ))
+        if(  (object->mode == PATROL)   &&  ((dist < 350 && fabs(rad_distance(object,player)) < PI/6)   ))
         {
             triggered = 1;
         }
-        if(object->mode == DOGFIGHT) triggered = 1;
+        if( (object->mode == PATROL  &&  dist < conditionlessSpot) || (dist < conditionlessSpot && !object->at_work))
+        {
+            triggered = 1;
+        }
+
+        
+        
+        if(object->mode == DOGFIGHT && !retreating) triggered = 1;
+    }
+
+
+
+
+
+    if(retreating)
+    {
+        object->mode = RETREAT;
     }
     if(triggered)
-        {
-            if(dist < 160) object->mode = DOGFIGHT;
-            else object->mode = PURSUIT;
-        }
-    else object->mode = PATROL;
+    {
+        if(dist < 160) object->mode = DOGFIGHT;
+        else object->mode = PURSUIT;
+        object->at_work = 0;
+        object->botTarget = 0;
+    }
+    else if(!retreating)
+    {
+        object->mode = PATROL;
+        object->botTarget = -1;
+        object->at_work = 0;
+    }
 
 
 }
 
-if(input_vec.size() > 1)
+if(input_vec.size() > 2)
 {
     #pragma omp parallel for
     for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
@@ -299,7 +392,7 @@ if(input_vec.size() > 1)
         float obj_dist = distance(object,player);
         for(std::vector<JetInst>::iterator ally = object+1; ally != input_vec.end(); ally++)
                 {
-                    if( (object->mode != PATROL) == (ally->mode != PATROL)) continue;
+                    if( (object->mode != PATROL) == (ally->mode != PATROL) || ally->mode == RETREAT) continue;
                     float dist_between = distance(object,ally);
                     float aly_dist = distance(ally,player);
                     #pragma omp critical
@@ -312,6 +405,8 @@ if(input_vec.size() > 1)
                                 {
                                     if(aly_dist < 160) ally->mode = DOGFIGHT;
                                     else ally->mode = PURSUIT;
+                                    ally->botTarget = 0;
+                                    ally->at_work = 0;
                                 }
                             }
                             else
@@ -320,6 +415,8 @@ if(input_vec.size() > 1)
                                 {
                                     if(obj_dist < 160) object->mode = DOGFIGHT;
                                     else object->mode = PURSUIT;
+                                    object->botTarget = 0;
+                                    object->at_work = 0;
                                 }
                             }
                         }
@@ -328,6 +425,9 @@ if(input_vec.size() > 1)
 
     }
 }
+
+
+
 
 
 
@@ -352,9 +452,10 @@ return object;
 
 
 
-JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_change_limit * overwrite,bool bot)
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_change_limit * overwrite,bool bot,unsigned short ID)
 {
     JetInst object = {
+        .ID = ID,
         .type = selected->player_jet,
         .hp = asset->jet_data[selected->player_jet].hp,
         .curr = {.x = -1, 
@@ -364,7 +465,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         .alter = {
                 .turn_speed = 0.,
                 .speed_mode = STANDARD,
-                .target_angle = (bot ?  ( rand()%2 ?   (float)rand()/(RAND_MAX) *1.8 + 1 : (float)rand()/(RAND_MAX) *(-1.8) - 1.2    )    :  0.0     ),
+                .target_angle = (bot ? ( rand()%2 ?  (float)rand()/RAND_MAX *1.5 + PI/2  : (float) rand()/RAND_MAX *(-1.5) - PI/2  )    :  0.0     ),
                 .rotatable = true,
                 .acceleratable = true
         },
@@ -372,6 +473,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         .at_work = false,
         .status = {0,0},
         .isBot = bot,
+        .botTarget = (bot ? -1 : 0),
         .ability = nullptr,
         .overwrite_limit = (overwrite ? overwrite : nullptr)
     };
@@ -388,7 +490,7 @@ float map_width = asset->lvl_data[level->level_name].map_width;
 float map_height = asset->lvl_data[level->level_name].map_height;
 
 for(int i = 0; i<ENUM_BOSS_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level->level_name].enemy_quality[i];
-float x = (float) map_width*0.7, y = (float) map_height/(enemy_amount+1);
+float x = (float) map_width*0.8, y = (float) map_height/(enemy_amount+1);
 
 struct selection templat[ENUM_BOSS_TYPE_FIN] = {
 {.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK} },
@@ -408,21 +510,21 @@ std::copy(asset->lvl_data[level->level_name].enemy_quality,asset->lvl_data[level
 
 for(int i = 0; i<ENUM_JET_TYPE_FIN;  i++)
 {
-    for(int q = 0; q< level->enemy_quality[i]; q++)
+    for(int q = 0; q< level->enemy_quality[i]; q++, level->nextID++)
     {
-        JetInst temp = jet_spawn(asset,templat+i,nullptr,1);
-        temp.curr.x = x + rand()%20-10;
+        JetInst temp = jet_spawn(asset,templat+i,nullptr,1,level->nextID);
+        temp.curr.x = x + rand()%30-15;
         temp.curr.y = y;
         level->jet_q.push_back(temp);
         y += (float) asset->lvl_data[level->level_name].map_height/(enemy_amount+1);
 
     }
 }
-for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++)
+for(int i = ENUM_JET_TYPE_FIN; i< ENUM_BOSS_TYPE_FIN; i++, level->nextID++)
 {
     for(int q = 0; q< level->enemy_quality[i]; q++)
     {
-        JetInst temp = jet_spawn(asset,templat+i,nullptr,1);
+        JetInst temp = jet_spawn(asset,templat+i,nullptr,1,level->nextID);
         temp.curr.x = x + (float)rand()/RAND_MAX*0.4*map_width - 0.2*map_width;
         temp.curr.y = map_height*(float)rand()/RAND_MAX;
         temp.ability = new struct Ability[ENUM_BOSS_ABILITY_FIN];
@@ -517,7 +619,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
 .damage = 45,
 .velocity = 1.75,
 .cooldown = 15,
-.replenish_cooldown = 20,
+.replenish_cooldown = 30,
 .ammo = 30,
 .magazine = 5,
 .spread = 0.05,

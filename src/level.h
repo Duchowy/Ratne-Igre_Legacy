@@ -1,5 +1,5 @@
 #ifndef PI
-#define PI atan(1)*4
+#define PI (atan(1)*4)
 #endif
 
 
@@ -80,6 +80,7 @@ std::vector<prompt_screen> prompt_q;
 float scale;
 struct RadarInst radar;
 struct Player_Data player;
+unsigned short nextID;
 short tick;
 riven * gift;
 bool pauseEngaged;

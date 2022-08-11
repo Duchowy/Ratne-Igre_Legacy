@@ -106,17 +106,18 @@ struct Ability
 
 
 struct JetInst{
+unsigned short ID;
 unsigned short type;
 int hp;
 struct state curr; //position and speed
 struct state_change alter; //speed alteration
-float target_angle;
 unsigned short mode;
 
 struct LaunInst weapon[3];
 bool at_work;
 bool status[ENUM_JET_STATUS_FIN];
 bool isBot;
+int botTarget;
 struct Ability * ability;
 struct state_change_limit * overwrite_limit;
 };
@@ -153,7 +154,7 @@ void projectile_init(struct asset_data * asset);
 void jet_init(struct asset_data * );
 void boss_init(struct asset_data * );
 void abl_init(struct asset_data * );
-JetInst jet_spawn(struct asset_data * asset, struct selection* selected,struct state_change_limit * overwrite,bool bot);
+JetInst jet_spawn(struct asset_data * asset, struct selection* selected,struct state_change_limit * overwrite,bool bot,unsigned short ID);
 void enemy_spawn(struct LevelInst * level, struct asset_data * asset);
 
 

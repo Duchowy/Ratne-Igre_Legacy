@@ -71,6 +71,7 @@ struct ProjInst
     ALLEGRO_COLOR color;
     struct Launcher * launcher;
     bool isBotLaunched;
+    int target;
 };
 
 struct LaunInst
@@ -154,6 +155,7 @@ void projectile_init(struct asset_data * asset);
 void jet_init(struct asset_data * );
 void boss_init(struct asset_data * );
 void abl_init(struct asset_data * );
+std::vector<JetInst>::iterator findJet(std::vector<JetInst> & input_vec, int ID);
 JetInst jet_spawn(struct asset_data * asset, struct selection* selected,struct state_change_limit * overwrite,bool bot,unsigned short ID);
 void enemy_spawn(struct LevelInst * level, struct asset_data * asset);
 

@@ -112,6 +112,37 @@ void load_config(config_data * config)
     std::cerr << "No 'oglEnabled' setting in configuration file." << std::endl;
     }
 
+
+
+
+//mission UI section
+try{
+        config->autoUIscale = cfg.lookup("autoUIscale");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'autoUIscale' setting in configuration file." << std::endl;
+    }
+
+if(!config->autoUIscale)
+{
+try{
+        config->UIscale = cfg.lookup("UIscale");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'UIscale' setting in configuration file." << std::endl;
+    }
+if(config->UIscale <= 0) config->UIscale = 1.;
+}
+    
+    
+
+
+
+
+
+
 //gameplay section
 
     try{
@@ -154,12 +185,14 @@ if(!allegro_init()) return 1;
 
 asset_data * assets = new asset_data;
 *assets = {.config = 
-    {.scaleUI = 1.,
+    {
     .default_display_width = 1000,
     .default_display_height = 600,
     .particlesEnabled = 1,
     .verticalSyncEnabled = 0,
     .MSAA = 8,
+    .autoUIscale = 0,
+    .UIscale = 1.,
     .FPS = 60,
     .fadeDistance = 800,
     .fadingLength = 200

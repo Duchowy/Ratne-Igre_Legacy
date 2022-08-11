@@ -19,12 +19,13 @@ struct RadarNode
 float dist;
 float rad_dist;
 short decay;
+bool isTarget;
 };
 
 
 struct RadarInst
 {
-bool mode;
+unsigned short mode;
 float range_rad;
 float range_dist;
 float turn_angle;

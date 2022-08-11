@@ -9,13 +9,15 @@
 
 struct config_data
 {
-float scaleUI; 
+
 unsigned int default_display_width;
 unsigned int default_display_height;
 bool particlesEnabled;
 bool verticalSyncEnabled;
 unsigned short MSAA;
 bool oglEnabled;
+bool autoUIscale;
+float UIscale; 
 float FPS;
 float fadeDistance;
 float fadingLength;

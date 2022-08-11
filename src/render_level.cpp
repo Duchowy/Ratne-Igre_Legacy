@@ -248,51 +248,53 @@ int window_height = al_get_display_height(alleg5->display);
     float dist = distance(player,object);
     if(dist < asset->config.fadeDistance + asset->config.fadingLength) 
     {
-    float x_dist = object->curr.x - player->curr.x;
-    float y_dist = object->curr.y - player->curr.y;
+        float x_dist = object->curr.x - player->curr.x;
+        float y_dist = object->curr.y - player->curr.y;
 
-    float x_diff = asset->scale_factor * (x_dist) + window_width/2;
-    float y_diff = asset->scale_factor * (y_dist) + window_height/2;
+        float x_diff = asset->scale_factor * (x_dist) + window_width/2;
+        float y_diff = asset->scale_factor * (y_dist) + window_height/2;
 
-    int full_hp = asset->jet_data[object->type].hp;
+        int full_hp = asset->jet_data[object->type].hp;
 
-    if(dist < asset->config.fadeDistance)
-    {
-    al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
-    x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-    }
-    else
-    {
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-        al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
-        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
-        );
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-    }
-    
-    
-    
-    
-    al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-        if(asset->jet_data[object->type].isBoss) 
+        if(dist < asset->config.fadeDistance)
         {
-            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
-            al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+        al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
+        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
         }
-        else 
+        else
         {
-            al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-            al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+            al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+            al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
+            x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
+            );
+            al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
         }
-    if(object->mode != PATROL)
-    {
-        al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+        
+        if(object->ID == player->botTarget && level->radar.mode == 2) al_draw_circle(x_diff,y_diff,21,al_map_rgb(240,10,10),2);
+        
 
-    }
-    #ifdef DEBUG
-        al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
-        al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->at_work);
-    #endif
+        
+        
+        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
+            if(asset->jet_data[object->type].isBoss) 
+            {
+                al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
+                al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+            }
+            else 
+            {
+                al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
+                al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+            }
+        if(object->mode != PATROL)
+        {
+            al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+
+        }
+        #ifdef DEBUG
+            al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
+            al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->at_work);
+        #endif
 
 
     }
@@ -515,6 +517,13 @@ float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_ang
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 al_draw_filled_pieslice(window_width/2,window_height/2,48,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
 
+if(level->radar.mode == 2)
+{
+if(player->botTarget != -1) al_draw_filled_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.06), window_height/2 + 32 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.06),4,al_map_rgba(120,0,0,122));
+al_draw_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.09), window_height/2 + 32 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.09),4,al_map_rgb(0,0,0), 1 );
+
+}
+
 for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
 {
     float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
@@ -530,12 +539,19 @@ for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); objec
         case 1:
         opacity = 1 - pow(1 - (float) object->decay/24,2);
         break;
+        case 2:
+        opacity = 1 - pow(1 - (float) object->decay/24,2);
+        break;
     }
 
 
 
         al_draw_filled_circle(x_pos, y_pos,
-        2,al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+        2,(
+        object->isTarget ? 
+        al_map_rgba_f(0.98,0.04,0.04,opacity) :
+        al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+        )
         );
         al_draw_circle(x_pos,y_pos,1,al_map_rgba_f(0,0,0,opacity),0.5);
 

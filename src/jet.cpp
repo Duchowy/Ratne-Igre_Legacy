@@ -4,7 +4,7 @@
 
 
 
-ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * pos)
+ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * pos, int target)
 {
     ProjInst object {
             .type = type,
@@ -12,7 +12,8 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
             .damage = gun->damage + gun->projectile->damage,
             .curr = {.x = pos->x, .y = pos->y, .turn_angle = pos->turn_angle, .speed = pos->speed + gun->velocity + gun->projectile->velocity },
             .status = {0},
-            .launcher = gun
+            .launcher = gun,
+            .target = target
         };
 
 
@@ -30,6 +31,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
         object.alter->target_angle = object.curr.turn_angle;
         object.alter->speed_mode = 2;
         object.alter->turn_speed = 0;
+        if(!gun->projectile->trait.DMGfall && object.target >= 0 && object.type == RAD_M)  object.decay +=30;
     }
 
 
@@ -50,7 +52,7 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
         {
             if(object->weapon[i].ammo && object->weapon[i].magazine && object->weapon[i].engaged && !object->weapon[i].cooldown)
             {
-                ProjInst shell = spawn_projectile(object->weapon[i].launcher->projectile - asset->proj_data,object->weapon[i].launcher,&object->curr);
+                ProjInst shell = spawn_projectile(object->weapon[i].launcher->projectile - asset->proj_data,object->weapon[i].launcher,&object->curr,object->botTarget);
                 if(shell.type >= ENUM_BULLET_TYPE_FIN)
                 {
                     shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].radius + 0.5);
@@ -88,42 +90,59 @@ void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterato
 object->alter.target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
 }
 
+
+std::vector<JetInst>::iterator findJet(std::vector<JetInst> & input_vec, int ID)
+{
+if(ID < 0) return input_vec.end();
+for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_vec.end(); object++)
+{
+if(object->ID == ID) return object;
+}
+
+return input_vec.end();
+}
+
+
+
 void target(struct LevelInst * level, struct asset_data * asset)
 {
 #pragma omp parallel for
 for(std::vector<ProjInst>::iterator shell = level->proj_q.begin(); shell != level->proj_q.end(); shell++)
 {
-    if(shell->status[CONTROLLED] == 1 || asset->proj_data[shell->type].trait.targeting_angle == 0.) continue;
+    if(shell->status[CONTROLLED] == 1 || asset->proj_data[shell->type].trait.targeting_angle == (float) 0.) continue;
+    bool search_for_new_target = true;
     float new_target = shell->alter->target_angle;
-    float min_deviation = 2*PI;
-    //float aot = 0;
 
-    for(std::vector<JetInst>::iterator target = level->jet_q.begin(); target != level->jet_q.end(); target++)
+    
+    if(shell->type == RAD_M )
     {
-        float distance = sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2));
-        float new_angle = atan2(( target->curr.y - shell->curr.y) ,(target->curr.x - shell->curr.x));
-        float deviation = fabs(angle_difference(shell->curr.turn_angle,new_angle));
-        switch(shell->type)
+        std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,shell->target);
+        if(follow_target != level->jet_q.end()) 
         {
-            case IR_M: 
-            {
-            float angle_of_attack = fabs(angle_difference(shell->curr.turn_angle,target->curr.turn_angle)) ;
-            if( angle_of_attack < PI/2  &&  distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle )
-            {
-                
+            search_for_new_target = false;
+            new_target = atan2(( follow_target->curr.y - shell->curr.y) ,(follow_target->curr.x - shell->curr.x));
+        }
+        else 
+        {
+            search_for_new_target = true;
+        }
+    }
 
-                //aot = angle_of_attack;
-                if(deviation < min_deviation)
-                {
-                new_target = new_angle;
-                min_deviation = deviation;
-                }
-            }
-            }
-            break;
-            case RAD_M:
+    if(search_for_new_target == true)
+    {
+        float min_deviation = 2*PI;
+
+        for(std::vector<JetInst>::iterator target = level->jet_q.begin(); target != level->jet_q.end(); target++)
+        {
+            float distance = sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2));
+            float new_angle = atan2(( target->curr.y - shell->curr.y) ,(target->curr.x - shell->curr.x));
+            float deviation = fabs(angle_difference(shell->curr.turn_angle,new_angle));
+            switch(shell->type)
             {
-                if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle && shell->isBotLaunched != target->isBot)
+                case IR_M: 
+                {
+                float angle_of_attack = fabs(angle_difference(shell->curr.turn_angle,target->curr.turn_angle)) ;
+                if( angle_of_attack < PI/2  &&  distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle )
                 {
                     
 
@@ -134,25 +153,34 @@ for(std::vector<ProjInst>::iterator shell = level->proj_q.begin(); shell != leve
                     min_deviation = deviation;
                     }
                 }
+                }
+                break;
+                case RAD_M:
+                {
+                    if(distance < shell->decay * shell->curr.speed  &&  deviation  < asset->proj_data[shell->type].trait.targeting_angle && shell->isBotLaunched != target->isBot)
+                    {
+                        
+
+                        //aot = angle_of_attack;
+                        if(deviation < min_deviation)
+                        {
+                        new_target = new_angle;
+                        min_deviation = deviation;
+                        }
+                    }
+                }
+                break;
             }
-            break;
-        }
-    }//eof jet iteration
+        }//eof jet iteration
+    }
     shell->alter->target_angle = new_target;
 }
 
 
 }
 
-std::vector<JetInst>::iterator findJet(std::vector<JetInst> & input_vec, int ID)
-{
-for(std::vector<JetInst>::iterator object = input_vec.begin(); object != input_vec.end(); object++)
-{
-if(object->ID == ID) return object;
-}
 
-return input_vec.end();
-}
+
 
 
 
@@ -197,7 +225,7 @@ switch(object->mode)
     case PURSUIT:
     {
         target(object,player,16);
-        //if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
+        if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
         {
             if(asset->jet_data[object->type].isBoss)
             {
@@ -205,7 +233,7 @@ switch(object->mode)
             }
             else
             {
-                //if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
+                if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
             }
 
             
@@ -219,7 +247,7 @@ switch(object->mode)
     {
         target(object,level->jet_q.begin(),8);
         float rad_dist = angle_difference(object->curr.turn_angle,object->alter.target_angle); //radial distance between object and target
-        //if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
+        if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
         if(fabs(rad_dist) > PI/2)
         {
             if(object->curr.speed > player->curr.speed) object->alter.speed_mode = AFTERBURNER;
@@ -484,7 +512,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         .at_work = false,
         .status = {0,0},
         .isBot = bot,
-        .botTarget = (bot ? -1 : 0),
+        .botTarget = -1,
         .ability = nullptr,
         .overwrite_limit = (overwrite ? overwrite : nullptr)
     };

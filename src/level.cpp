@@ -439,26 +439,63 @@ void move_radar(LevelInst * level)
     }
 }
 
+void radarCycleTarget(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator reference, RadarInst * radar)
+{
+    std::vector<JetInst>::iterator follow_target = findJet(input_vec,reference->botTarget);
+    if(follow_target == input_vec.end()) follow_target = input_vec.begin();
+    else follow_target +=1;
+bool finished = 0;
+do
+{
+    if(follow_target == input_vec.end())
+    {
+        reference->botTarget = -1;
+        finished = 1;
+    } 
+    else if(follow_target != reference && fabs(rad_distance(&reference->curr,&follow_target->curr)) < radar->range_rad && distance(reference,follow_target) < radar->range_dist )
+    {
+        reference->botTarget = follow_target->ID;
+        finished = 1;
+    }
+    follow_target+=1;
+} while (!finished);
+
+
+
+
+}
+
+
 void process_radar(LevelInst * level)
 {
+
+
+
+    
     short decay;
     if(!level->radar.mode) decay = 48;
     else decay = 24;
 
     std::vector<JetInst>::iterator player = level->jet_q.begin();
+
+    if(level->radar.mode != 2) player->botTarget = -1;
+    std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,player->botTarget);
+    if(follow_target == level->jet_q.end()) player->botTarget = -1;
+    if(fabs(rad_distance(&player->curr,&follow_target->curr)) > level->radar.range_rad || distance(player,follow_target) > level->radar.range_dist) player->botTarget = -1;
+
+
     float tied_radar_pos = angle_addition(player->curr.turn_angle, level->radar.turn_angle);
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
-        float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
-        float range_obj_player = distance(object,player);
-    if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && range_obj_player < level->radar.range_dist && range_obj_player > 450)
-    {
-        struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = decay};
-        level->radar.node_q.push_back(newNode);
-    }
+            float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
+            float range_obj_player = distance(object,player);
+        if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && range_obj_player < level->radar.range_dist && range_obj_player > 450)
+        {
+            struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = decay, .isTarget = (object->ID == player->botTarget ? 1 : 0)};
+            level->radar.node_q.push_back(newNode);
+        }
 
     }
-
 
 
 
@@ -567,7 +604,7 @@ while(!kill)
                 break;
                 case ALLEGRO_KEY_R:
                 {
-                lvl->radar.mode = !lvl->radar.mode;
+                lvl->radar.mode = (lvl->radar.mode + 1 > 2 ? 0 : lvl->radar.mode + 1);
                 float new_range_rad;
                     if(!lvl->radar.mode)
                     {
@@ -587,6 +624,11 @@ while(!kill)
                         else lvl->radar.turn_angle = -new_range_rad;
                     }
                     lvl->radar.node_q.clear();
+                }
+                break;
+                case ALLEGRO_KEY_TAB:
+                {
+                    if(lvl->radar.mode == 2) radarCycleTarget(lvl->jet_q,lvl->jet_q.begin(),&lvl->radar);
                 }
                 break;
             }

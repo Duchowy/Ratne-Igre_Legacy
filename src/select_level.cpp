@@ -181,8 +181,8 @@ while(!kill && !quit)
     {
         case ALLEGRO_EVENT_DISPLAY_RESIZE:
         {
-            if(asset->config.autoUIscale) asset->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
             al_acknowledge_resize(alleg5->display); 
+            if(asset->config.autoUIscale) asset->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
         }
         break;
         case ALLEGRO_EVENT_DISPLAY_CLOSE: quit = 1; break;

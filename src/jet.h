@@ -34,7 +34,8 @@ unsigned short decay;
 unsigned short damage;
 float velocity;
 state_change_limit alter_limit;
-float radius;
+float radius; //damage radius
+float activation_radius; //radius at which shell activates
 struct
 {
     float targeting_angle;

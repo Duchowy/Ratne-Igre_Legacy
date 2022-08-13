@@ -3,6 +3,7 @@
 #include "main.h"
 #include "movement.h"
 #include "render_level.h"
+#include <chrono>
 
 int comparator(const void * fa, const void * fb)
 {
@@ -307,31 +308,52 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
 		{
 		activated = 1;
 		}
-
-    for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
-	{
-		if( shell->decay + 3 <= asset->proj_data[shell->type].decay + shell->launcher->decay && 
-        distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius && 
-        (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   )  )    
-        ) //target hit
-		{
-            if(shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) //self-enemy check
-            {  
-                activated = 1;
-            }
-            if(activated)
+    std::vector<JetInst>::iterator activatingTarget = input->jet_q.end();
+    if(!activated && shell->decay + 3 <= asset->proj_data[shell->type].decay + shell->launcher->decay)
+        {
+            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++) 
             {
-                #pragma omp critical
+
+                if(
+                (shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) &&
+                (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   ))  &&
+                distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].activation_radius   
+                )
                 {
-                    target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
+                            activated = 1;
+                            activatingTarget = target;
+                            break;
                 }
-                if(!asset->proj_data[shell->type].trait.isAOE) break;
             }
-		}
-	}
+        }
 
     if(activated)
     {
+        if(asset->proj_data[shell->type].trait.isAOE)
+        {
+            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
+            {
+                if(
+                    distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius &&
+                    (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   )  )
+                )
+                    {
+                        #pragma omp critical
+                        {
+                            target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
+                        }
+                    }
+            }
+        }
+        else
+        {
+            #pragma omp critical
+            {
+                activatingTarget->hp = (activatingTarget->hp - shell->damage > 0 ? activatingTarget->hp - shell->damage : 0);
+            }
+        }
+
+
         shell->decay = 0;
     }
 

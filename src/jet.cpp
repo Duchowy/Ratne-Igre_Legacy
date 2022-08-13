@@ -55,16 +55,14 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                 ProjInst shell = spawn_projectile(object->weapon[i].launcher->projectile - asset->proj_data,object->weapon[i].launcher,&object->curr,object->botTarget);
                 if(shell.type >= ENUM_BULLET_TYPE_FIN)
                 {
-                    shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].radius + 0.5);
-                    shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].radius + 0.5);
                     shell.isBotLaunched = object->isBot;
                 }
                 else
                 {
                     shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;
-
-
                 }
+                shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
+                shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
 
 
                 level->proj_q.push_back(shell);
@@ -279,11 +277,12 @@ switch(object->mode)
 }
 
 
-bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator reference)
-{//fix conditionless spot
+bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator reference, asset_data * asset)
+{
     bool elegible = 0;
     if(input_vec.size() > 2)
     {
+        float turn_angle_difference = fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle));
         std::vector<JetInst>::iterator found = findJet(input_vec,object->botTarget);
         if(found != input_vec.end() && found != reference && distance(object,findJet(input_vec,object->botTarget)) > 150 && distance(object,reference) < 900) //ally exists and is retreating
         {
@@ -292,7 +291,9 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
         else if(
             object->botTarget != -1   &&  //start retreating, had a target before but is disengaging now
             distance(object,reference) < 450 && fabs(rad_distance(object,reference)) > 2. * PI / 3. 
-            && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > 3. * PI / 4.
+            && (turn_angle_difference > 3. * PI / 4. 
+                || (turn_angle_difference > 2. * PI / 3. && asset->jet_data[object->type].alter_limit.speed_limit[1] > asset->jet_data[reference->type].alter_limit.speed_limit[1]   )   
+                )
         )
         {
                 float min_distance = 1400;
@@ -379,7 +380,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
                 triggered = 1;
             }else
             {
-                if(elegibleForRetreat(input_vec,object,player))
+                if(elegibleForRetreat(input_vec,object,player,limit))
                 {
                     if(object->at_work) object->mode = RETREAT;
                     else //surroundings check
@@ -691,6 +692,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
         .radius = 0,
+        .activation_radius = 0,
         .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1},
     },
     { //airburst
@@ -702,6 +704,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
         .radius = 24,
+        .activation_radius = 6,
         .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 0, .isAOE = 1, .DMGfall = 0},
     },
     { //infrared
@@ -712,7 +715,8 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0.025,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.005,.speed_rate = {0,0.2},.speed_limit = {0,6.5},1
             },
-        .radius = 3,
+        .radius = 5,
+        .activation_radius = 3,
         .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },
     { //radar
@@ -723,7 +727,8 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0.03,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.006,.speed_rate = {0,0.2},.speed_limit = {0,5.5},1
             },
-        .radius = 3,
+        .radius = 5,
+        .activation_radius = 3,
         .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },
 

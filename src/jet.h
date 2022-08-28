@@ -145,7 +145,7 @@ struct Boss{
 
 
 void shoot(struct LevelInst * level, struct asset_data * asset);
-void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target,float offset);
+float getTargetAngle(state * object, state * target,float offset);
 void target(struct LevelInst * level, struct asset_data * asset);
 void action(struct LevelInst * level, struct asset_data * asset);
 void decision(std::vector<JetInst> &input_vec, struct asset_data * limit);

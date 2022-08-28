@@ -41,7 +41,7 @@ else //y is edge
     }
 
 }
-target(object,player,16);
+object->alter.target_angle = getTargetAngle(&object->curr,&player->curr,16);
 object->curr.turn_angle = object->alter.target_angle;
 
 }

@@ -37,13 +37,13 @@ std::vector<RadarNode> node_q;
 
 struct ParticleInst{
     unsigned int type;
-    ALLEGRO_COLOR color;
+    ALLEGRO_COLOR * color;
     struct state curr;
     float scale_x;
     float scale_y;
     struct state_change alter;
     int decay;
-    bool isDecaying;
+    bool isDecaying; //change to isFading
     unsigned short flip_img;
 };
 
@@ -92,8 +92,12 @@ bool finalPromptEngaged;
 
 struct Particle
 {
-    ALLEGRO_BITMAP * texture;
     int decay;
+    struct{
+    bool isAnimated;
+    unsigned short animationClock;
+    unsigned short textureCount;
+    } anim;
 };
 
 
@@ -107,6 +111,6 @@ int level(allegro5_data*,asset_data*,LevelInst*);
 float angle_addition(float object, float addition);
 float angle_difference(float current, float target);
 float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
-float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
+float rad_distance(state * current, state * target);
 
 #endif

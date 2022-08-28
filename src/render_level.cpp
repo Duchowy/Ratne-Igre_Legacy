@@ -332,27 +332,51 @@ al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
 
 
 
-
+al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 //particle section
 {
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
-        if(object->isDecaying)
-        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,al_map_rgba(255,255,255,255*object->decay / asset->prt_data[object->type].decay),23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
-        object->curr.turn_angle,object->flip_img
-        );
-        else
-        al_draw_tinted_scaled_rotated_bitmap(asset->prt_data[object->type].texture,object->color,23,23,
-        asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,object->scale_x,object->scale_y,
-        object->curr.turn_angle,object->flip_img
-        );
+        ALLEGRO_COLOR color = al_map_rgba_f(
+            (object->color ? object->color->r : 1),(object->color ? object->color->g : 1),(object->color ? object->color->b : 1)
+            , (object->isDecaying ? (float)object->decay / asset->prt_data[object->type].decay  : 1  ));
+
+        if(object->type == PIXEL)
+        {
+            al_draw_filled_rectangle(asset->scale_factor * (object->curr.x - reference->curr.x -object->scale_x/2.) +window_width/2,
+            asset->scale_factor * (object->curr.y - reference->curr.y -object->scale_y/2.) + window_height/2,
+            asset->scale_factor * (object->curr.x - reference->curr.x +object->scale_x/2.) +window_width/2,
+            asset->scale_factor * (object->curr.y - reference->curr.y +object->scale_y/2.) + window_height/2,
+            color
+            );
+        }else
+        {
+            if(asset->prt_data[object->type].anim.isAnimated)
+            {
+                int which_region = ( (asset->prt_data[object->type].decay - object->decay) /asset->prt_data[object->type].anim.animationClock);
+
+
+
+                al_draw_tinted_scaled_rotated_bitmap_region(asset->prt_texture[object->type],which_region*48,0,48,48,color,24,24,
+                asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
+                asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
+                object->curr.turn_angle,object->flip_img
+                );
+                
+            }
+            else
+            {
+                al_draw_tinted_scaled_rotated_bitmap(asset->prt_texture[object->type],color,23,23,
+            asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
+            object->curr.turn_angle,object->flip_img
+            );
+
+            }
+
+            
+        }
 
     }
-
-
-
-
 }
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 
@@ -526,7 +550,7 @@ case 1:
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
-        float rad_dist = rad_distance(player,object);
+        float rad_dist = rad_distance(&player->curr,&object->curr);
         if(distance(player,object) < level->radar.range_dist && fabs(rad_dist) < level->radar.range_rad && !asset->jet_data[object->type].isBoss) 
         {
             ALLEGRO_COLOR indicator;

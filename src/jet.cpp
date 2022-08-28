@@ -79,13 +79,12 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
     
 }
 
-void target(std::vector<JetInst>::iterator object, std::vector<JetInst>::iterator target,float offset)
+float getTargetAngle(state * object, state * target,float offset)
 {
-    float target_a[2];
-    target_a[0] =  target->curr.x + offset*cos(target->curr.turn_angle)*target->curr.speed;
-    target_a[1] = target->curr.y + offset*sin(target->curr.turn_angle)*target->curr.speed;
+    float target_x =  target->x + offset*cos(target->turn_angle)*target->speed;
+    float target_y = target->y + offset*sin(target->turn_angle)*target->speed;
 
-object->alter.target_angle = atan2(( target_a[1] - object->curr.y) ,(target_a[0] - object->curr.x));
+return atan2(( target_y - object->y) ,(target_x - object->x));
 }
 
 
@@ -222,8 +221,8 @@ switch(object->mode)
     break;
     case PURSUIT:
     {
-        target(object,player,16);
-        if(fabs(rad_distance(object,player)) < asset->laun_data[object->weapon[0].type].spread) 
+        object->alter.target_angle = getTargetAngle(&object->curr,&player->curr,16);
+        if(fabs(rad_distance(&object->curr,&player->curr)) < asset->laun_data[object->weapon[0].type].spread) 
         {
             if(asset->jet_data[object->type].isBoss)
             {
@@ -243,7 +242,7 @@ switch(object->mode)
     break;
     case DOGFIGHT:
     {
-        target(object,level->jet_q.begin(),8);
+        object->alter.target_angle = getTargetAngle(&object->curr,&level->jet_q.begin()->curr,8);
         float rad_dist = angle_difference(object->curr.turn_angle,object->alter.target_angle); //radial distance between object and target
         if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
         if(fabs(rad_dist) > PI/2)
@@ -262,7 +261,7 @@ switch(object->mode)
     {
     object->alter.speed_mode = AFTERBURNER;
     std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,object->botTarget);
-    target(object,follow_target,8);
+    object->alter.target_angle = getTargetAngle(&object->curr,&follow_target->curr,8);
     }
     break;
 
@@ -290,7 +289,7 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
         }
         else if(
             object->botTarget != -1   &&  //start retreating, had a target before but is disengaging now
-            distance(object,reference) < 450 && fabs(rad_distance(object,reference)) > 2. * PI / 3. 
+            distance(object,reference) < 450 && fabs(rad_distance(&object->curr,&reference->curr)) > 2. * PI / 3. 
             && (turn_angle_difference > 3. * PI / 4. 
                 || (turn_angle_difference > 2. * PI / 3. && asset->jet_data[object->type].alter_limit.speed_limit[1] > asset->jet_data[reference->type].alter_limit.speed_limit[1]   )   
                 )
@@ -301,7 +300,7 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
             {
                 if(ally == reference || ally == object || ally->mode != PATROL) continue;
                 float ally_distance = distance(object,ally);
-                if(fabs(rad_distance(object,ally)) < PI/3. && ally_distance < min_distance)
+                if(fabs(rad_distance(&object->curr,&ally->curr)) < PI/3. && ally_distance < min_distance)
                 {
                     min_distance = ally_distance;
                     object->botTarget = ally->ID;
@@ -311,7 +310,7 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
         }
     }
     if(elegible && 
-    fabs(rad_distance(object,reference)) > (float) PI / 2. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > (float) PI / .2
+    fabs(rad_distance(&object->curr,&reference->curr)) > (float) PI / 2. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > (float) PI / .2
     ) object->at_work = true;
     else object->at_work = false;
 
@@ -342,7 +341,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
             limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::DASH] &&
             object->ability[BOSS_ABILITY::DASH].cooldown == 0 &&
             (
-            (dist > 350 && fabs(rad_distance(object,player)) < PI/6) || (dist < 350 && fabs(rad_distance(object,player)) > 2*PI/3)
+            (dist > 350 && fabs(rad_distance(&object->curr,&player->curr)) < PI/6) || (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) > 2*PI/3)
             )
         )
         {
@@ -353,7 +352,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         if(
             limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
             object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
-            (dist < 350 && dist > 150 && fabs(rad_distance(object,player)) > 3*PI/5)
+            (dist < 350 && dist > 150 && fabs(rad_distance(&object->curr,&player->curr)) > 3*PI/5)
         )
         {
             object->ability[BOSS_ABILITY::RAND_POS].cooldown = limit->abl_data[BOSS_ABILITY::RAND_POS].cooldown;
@@ -369,7 +368,7 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
         float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120;
         
         if(
-            (object->mode == PATROL   &&  (dist < 350 && fabs(rad_distance(object,player)) < PI/6 || dist < conditionlessSpot) ) ||
+            (object->mode == PATROL   &&  (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) < PI/6 || dist < conditionlessSpot) ) ||
             (object->mode == DOGFIGHT) ||
             (object->mode == PURSUIT &&  dist < 350) ||
             (object->mode == RETREAT)
@@ -600,70 +599,70 @@ void launcher_init(struct asset_data * asset)
 {
 Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
 { //SHVAK
-.decay = 35,
-.damage = 45,
-.velocity = 1,
-.cooldown = 8,
-.replenish_cooldown = 14,
-.ammo = 180,
-.magazine = 25,
-.spread = 0.05,
-.projectile = asset->proj_data + SLUG
+    .decay = 35,
+    .damage = 45,
+    .velocity = 1,
+    .cooldown = 8,
+    .replenish_cooldown = 14,
+    .ammo = 180,
+    .magazine = 25,
+    .spread = 0.05,
+    .projectile = asset->proj_data + SLUG
 },
 { //ADEN
-.decay = 30,
-.damage = 15,
-.velocity = 1.5,
-.cooldown = 5,
-.replenish_cooldown = 16,
-.ammo = 240,
-.magazine = 40,
-.spread = 0.075,
-.projectile = asset->proj_data + SLUG
+    .decay = 30,
+    .damage = 15,
+    .velocity = 1.5,
+    .cooldown = 5,
+    .replenish_cooldown = 16,
+    .ammo = 240,
+    .magazine = 40,
+    .spread = 0.075,
+    .projectile = asset->proj_data + SLUG
 },
 { //GATLING
-.decay = 30,
-.damage = 2,
-.velocity = 1.75,
-.cooldown = 3,
-.replenish_cooldown = 18,
-.ammo = 400,
-.magazine = 180,
-.spread = 0.03,
-.projectile = asset->proj_data + SLUG
+    .decay = 30,
+    .damage = 2,
+    .velocity = 1.75,
+    .cooldown = 3,
+    .replenish_cooldown = 18,
+    .ammo = 400,
+    .magazine = 180,
+    .spread = 0.03,
+    .projectile = asset->proj_data + SLUG
 },
 { //Infrared
-.decay = 30,
-.damage = 0,
-.velocity = 0,
-.cooldown = 60,
-.replenish_cooldown = 120,
-.ammo = 14,
-.magazine = 2,
-.spread = 0.03,
-.projectile = asset->proj_data + IR_M
+    .decay = 30,
+    .damage = 0,
+    .velocity = 0,
+    .cooldown = 60,
+    .replenish_cooldown = 120,
+    .ammo = 14,
+    .magazine = 2,
+    .spread = 0.03,
+    .projectile = asset->proj_data + IR_M
 },
 { //Radar
-.decay = 30,
-.damage = 0,
-.velocity = 0,
-.cooldown = 120,
-.replenish_cooldown = 120,
-.ammo = 10,
-.magazine = 1,
-.spread = 0.03,
-.projectile = asset->proj_data + RAD_M
+    .decay = 30,
+    .damage = 0,
+    .velocity = 0,
+    .cooldown = 120,
+    .replenish_cooldown = 120,
+    .ammo = 10,
+    .magazine = 1,
+    .spread = 0.03,
+    .projectile = asset->proj_data + RAD_M
 },
 { //FLAK
-.decay = 35,
-.damage = 45,
-.velocity = 1.75,
-.cooldown = 15,
-.replenish_cooldown = 30,
-.ammo = 30,
-.magazine = 5,
-.spread = 0.05,
-.projectile = asset->proj_data + AIRBURST
+    .decay = 35,
+    .damage = 45,
+    .velocity = 1.75,
+    .cooldown = 20,
+    .replenish_cooldown = 30,
+    .ammo = 30,
+    .magazine = 4,
+    .spread = 0.05,
+    .projectile = asset->proj_data + AIRBURST
 },
 
 
@@ -703,9 +702,9 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0,.speed_mode = 1,.rotatable = 0, .acceleratable = 0},
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
-        .radius = 24,
-        .activation_radius = 6,
-        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 0, .isAOE = 1, .DMGfall = 0},
+        .radius = 20,
+        .activation_radius = 8,
+        .trait = {.targeting_angle = 0, .draw_width = 1.2, .draw_height = 0.7, .hitCircular = 0, .isAOE = 1, .DMGfall = 0},
     },
     { //infrared
         .decay = 100,
@@ -715,7 +714,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0.025,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.005,.speed_rate = {0,0.2},.speed_limit = {0,6.5},1
             },
-        .radius = 5,
+        .radius = 7,
         .activation_radius = 3,
         .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },
@@ -727,7 +726,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0.03,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.006,.speed_rate = {0,0.2},.speed_limit = {0,5.5},1
             },
-        .radius = 5,
+        .radius = 7,
         .activation_radius = 3,
         .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
     },

@@ -226,6 +226,7 @@ void garbage_collect(asset_data * asset, LevelInst * level)
     {
         if(object->decay <= 0) 
         {
+            if(object->color) delete object->color;
             level->prt_q.erase(object);
             object--;
         }
@@ -272,19 +273,19 @@ float diff = current-target;
 return diff;
 }
 
-float rad_distance(state * current, state * target)
+float rad_distance(state * current, state * target) //returns radial distance to target. Turn angle is considered for *current
 {
 float new_angle = atan2(( target->y - current->y) ,(target->x - current->x));
 return angle_difference(current->turn_angle,new_angle);
 }
 
-
+/*
 float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target)
 {
 float new_angle = atan2(( target->curr.y - current->curr.y) ,(target->curr.x - current->curr.x));
 return angle_difference(current->curr.turn_angle,new_angle);
 }
-
+*/
 float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target) //to be changed to use curr struct
 {
     return sqrt( pow( target->curr.x - current->curr.x ,2) +  pow(  target->curr.y - current->curr.y ,2));
@@ -316,7 +317,7 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
 
                 if(
                 (shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) &&
-                (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   ))  &&
+                (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   ))  &&
                 distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].activation_radius   
                 )
                 {
@@ -335,7 +336,7 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
             {
                 if(
                     distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius &&
-                    (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/3   )  )
+                    (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   )  )
                 )
                     {
                         #pragma omp critical
@@ -343,6 +344,36 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
                             target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
                         }
                     }
+            }
+
+            if(asset->config.particlesEnabled)
+            {
+                
+                
+                    ParticleInst expl = {.type = (asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST),
+                        .color = nullptr,
+                        .curr = {.x = shell->curr.x, .y = shell->curr.y, .turn_angle = shell->curr.turn_angle, .speed = 0   },
+                        .scale_x = (float) asset->proj_data[shell->type].radius/20,
+                        .scale_y = (float) asset->proj_data[shell->type].radius/20,
+                        .alter = {
+                            .turn_speed = 0.,
+                            .rotatable = false,
+                            .acceleratable = false,
+                        },
+                        .decay = asset->prt_data[(asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST)].decay,
+                        .isDecaying = false,
+                        .flip_img = 0
+                    };
+                
+                #pragma omp critical
+                {
+                input->prt_q.push_back(expl);
+                }
+
+
+                
+
+
             }
         }
         else
@@ -405,28 +436,56 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
     if(asset->config.particlesEnabled && object->ability[CMEASURE].duration && object->ability[CMEASURE].duration %20 == 0)
     {
     ParticleInst temp1, temp2;
-    temp1.type = temp2.type = FLARE;
-    temp1.decay = temp2.decay = asset->prt_data[FLARE].decay;
-    temp1.curr.turn_angle = angle_addition(object->curr.turn_angle,PI/2);
-    temp2.curr.turn_angle = angle_addition(object->curr.turn_angle,-PI/2);
-    temp1.alter.rotatable = temp2.alter.rotatable = 1;
-    temp1.alter.acceleratable = temp2.alter.acceleratable = 0;
-    temp1.alter.turn_speed =  0.01;
-    temp2.alter.turn_speed = -temp1.alter.turn_speed;
-    temp1.curr.speed = temp2.curr.speed = 0.25;
-    temp1.curr.x = temp2.curr.x = object->curr.x; 
-    temp1.curr.y = temp2.curr.y = object->curr.y; 
-    temp1.flip_img = 0;
-    temp2.flip_img = ALLEGRO_FLIP_VERTICAL;
-    temp1.scale_x = temp2.scale_x = temp1.scale_y = temp2.scale_y = 1;
-    temp1.isDecaying = temp2.isDecaying = 1;
+
+    temp1 = {
+        .type = FLARE,
+        .color = nullptr,
+        .curr = {
+            .x = object->curr.x,
+            .y = object->curr.y,
+            .turn_angle = angle_addition(object->curr.turn_angle,PI/2),
+            .speed = 0.25
+        },
+        .scale_x = 1,
+        .scale_y = 1,
+        .alter = {
+            .turn_speed = 0.01,
+            .rotatable = 1,
+            .acceleratable = 0,
+        },
+        .decay = asset->prt_data[FLARE].decay,
+        .isDecaying = true,
+        .flip_img = 0
+    };
+    temp2 = {
+        .type = FLARE,
+        .color = nullptr,
+        .curr = {
+            .x = object->curr.x,
+            .y = object->curr.y,
+            .turn_angle = angle_difference(object->curr.turn_angle,PI/2),
+            .speed = 0.25
+        },
+        .scale_x = 1,
+        .scale_y = 1,
+        .alter = {
+            .turn_speed = -0.01,
+            .rotatable = 1,
+            .acceleratable = 0,
+        },
+        .decay = asset->prt_data[FLARE].decay,
+        .isDecaying = true,
+        .flip_img = ALLEGRO_FLIP_VERTICAL
+    };
     move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp1.curr.speed);
     move(&temp2.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp2.curr.speed);
 
     lvl->prt_q.push_back(temp1);
     lvl->prt_q.push_back(temp2);
 
-    }
+
+
+    };
 
 
 }

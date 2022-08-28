@@ -365,7 +365,9 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->jet_texture[SR91] = al_load_bitmap("texture/jet/sr91.png");
 
         //particle
-    lvl->prt_data[FLARE].texture = al_load_bitmap("texture/particle/flare.png");
+    lvl->prt_texture[FLARE] = al_load_bitmap("texture/particle/flare.png");
+    lvl->prt_texture[EXPLOSION] = al_load_bitmap("texture/particle/explosion_circular.png");
+    lvl->prt_texture[EXPLOSION_AIRBURST] = al_load_bitmap("texture/particle/explosion_airburst.png");
 
         //ui
     lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
@@ -387,7 +389,9 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->jet_texture[HARRIER]);
         al_destroy_bitmap(lvl->jet_texture[MIG29]);
         al_destroy_bitmap(lvl->jet_texture[SR91]);
-        al_destroy_bitmap(lvl->prt_data[FLARE].texture);
+        al_destroy_bitmap(lvl->prt_texture[FLARE]);
+        al_destroy_bitmap(lvl->prt_texture[EXPLOSION]);
+        al_destroy_bitmap(lvl->prt_texture[EXPLOSION_AIRBURST]);
         al_destroy_bitmap(lvl->ui_texture[0]);
 
     }
@@ -397,20 +401,17 @@ void texture_init(struct asset_data * lvl, bool load)
 
 void particle_init(struct asset_data * asset)
 {
-    for(int i = 0; i< ENUM_PRT_TYPE_FIN;i++)
-    {
-        switch(i)
-        {
-            case FLARE:
-            {
-                asset->prt_data[i].decay = 90;
-            break;
-            }
-        }
+    asset->prt_data[FLARE] = {.decay = 90, .anim = {.isAnimated = false}};
 
 
-    }
-
+    asset->prt_data[EXPLOSION] = {
+        .decay = 40-1, //extract one because it would go off-chart
+        .anim = {.isAnimated = true, .animationClock = 10, .textureCount = 4},
+        };
+    asset->prt_data[EXPLOSION_AIRBURST] = {
+        .decay = 32-1, //extract one because it would go off-chart
+        .anim = {.isAnimated = true, .animationClock = 8, .textureCount = 4},
+        };
 
 
 }

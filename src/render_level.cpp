@@ -125,7 +125,7 @@ switch(type)
                 case 2: title = "Move on, more hostiles on the way."; break;
                 case 3: title = "Brave enough for more? Hostiles incoming!"; break;
             }
-            rander = rand()%10;
+            rander = rand()%12;
             switch(rander)
             {
                 case 0: desc = "Tip: use scroll wheel to zoom in and out"; break;
@@ -139,7 +139,7 @@ switch(type)
                 case 8: desc = "Tip: press LMB to shoot your gun"; break;
                 case 9: desc = "Tip: press RMB to shoot your special weapon"; break;
                 case 10: desc = "Tip: your mod data is saved in gamedata.sav file"; break;
-
+                case 11: desc = "Tip: edit config.cfg to influence game operation"; break;
             }
 
 

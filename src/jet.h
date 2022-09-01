@@ -69,7 +69,7 @@ struct ProjInst
     struct state curr;
     struct state_change * alter;
     bool status[ENUM_MSL_STATUS_FIN];
-    ALLEGRO_COLOR color;
+    sf::Color color;
     struct Launcher * launcher;
     bool isBotLaunched;
     int target;

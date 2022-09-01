@@ -33,14 +33,14 @@ void update_graph(graph_data * graph,state_change_limit * alter, float lower, fl
 }
 
 
-int process_click(std::array<box_string, 2> & button, ALLEGRO_MOUSE_STATE * mouse)
+int process_click(std::array<box_string, 2> & button, sf::Vector2i & mouse)
 {
-
-al_get_mouse_state(mouse);
+mouse = sf::Mouse::getPosition();
+//al_get_mouse_state(mouse);
 
 for(int i = 0; i < 2; i++)
 {
-if(button[i].x - button[i].width/2 <= mouse->x && mouse->x <= button[i].x + button[i].width/2     &&      button[i].y - button[i].height/2 <= mouse->y && mouse->y <= button[i].y + button[i].height/2) return i;
+if(button[i].x - button[i].width/2 <= mouse.x && mouse.x <= button[i].x + button[i].width/2     &&      button[i].y - button[i].height/2 <= mouse.y && mouse.y <= button[i].y + button[i].height/2) return i;
 }
 
 
@@ -82,22 +82,22 @@ switch(choice->weapon[i-1])
 
 }
 
-void update_button_pos(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,  allegro5_data* alleg5)
+void update_button_pos(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,  sf::RenderWindow & display)
 {
 for(int i = 0; i<4; i++)
 {
 //button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
-button[i].x = (float) al_get_display_width(alleg5->display)/2 + 250*i - 375;
+button[i].x = (float) display.getSize().x/2 + 250*i - 375;
 
-button[i].y = al_get_display_height(alleg5->display) * 7/10;
+button[i].y = display.getSize().y * 7/10;
 
 }
 
 button_click[0].x = button_click[0].width/2 + 30;
-button_click[0].y = al_get_display_height(alleg5->display) - button_click[0].height/2 - 30;
+button_click[0].y = display.getSize().y - button_click[0].height/2 - 30;
 
-button_click[1].x = al_get_display_width(alleg5->display) - button_click[1].width/2 - 30;
-button_click[1].y = al_get_display_height(alleg5->display) - button_click[1].height/2 - 30;
+button_click[1].x = display.getSize().x - button_click[1].width/2 - 30;
+button_click[1].y = display.getSize().y - button_click[1].height/2 - 30;
 
 }
 
@@ -106,15 +106,15 @@ button_click[1].y = al_get_display_height(alleg5->display) - button_click[1].hei
 
 
 
-void update(std::array<box_string, 4> & button,struct selection * choice,ALLEGRO_MOUSE_STATE *mouse)
+void update(std::array<box_string, 4> & button,struct selection * choice, sf::Vector2i & mouse, int decision)
 {
 short number= -1;
 
 
-int decision = al_get_mouse_state_axis(mouse, 2);
+//al_get_mouse_state_axis(mouse, 2) //rewrite
 for(int i = 0; i<4 && number ==-1; i++)
     {
-    if(   (button[i].x - button[i].width/2 < mouse->x && mouse->x < button[i].x + button[i].width/2) && (button[i].y - button[i].height/2 < mouse->y && mouse->y < button[i].y + button[i].height/2)) number = i;
+    if(   (button[i].x - button[i].width/2 < mouse.x && mouse.x < button[i].x + button[i].width/2) && (button[i].y - button[i].height/2 < mouse.y && mouse.y < button[i].y + button[i].height/2)) number = i;
     }
 switch(number)
 {
@@ -147,10 +147,10 @@ switch(number)
     break;
     
 }
-al_set_mouse_z(0); //zero the scroll
+//al_set_mouse_z(0); //zero the scroll
 }
 
-void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, graph_data * primary, graph_data * secondary )
+void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,sf::RenderWindow & display, struct Player_Data * player, graph_data * primary, graph_data * secondary )
 {
 
 /*########
@@ -160,13 +160,36 @@ void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_
 
 for(int i = 0; i<4; i++)
 {
-al_draw_filled_rectangle(button[i].x - button[i].width/2,button[i].y - button[i].height/2,button[i].x + button[i].width/2,button[i].y + button[i].height/2,
-al_map_rgb(0,20,20));
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y,ALLEGRO_ALIGN_CENTRE,button[i].name.c_str());
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i].y-button[i].height/2-50,200,al_get_font_line_height(alleg5->font),ALLEGRO_ALIGN_CENTRE,button[i].desc.c_str());
+sf::RectangleShape button_inst(sf::Vector2f(button[i].width,button[i].height));
+button_inst.setFillColor(sf::Color(0,20,20,255));
+button_inst.setOrigin(sf::Vector2f(button[i].width/2,button[i].height/2));
+button_inst.setPosition(sf::Vector2f(button[i].x,button[i].y));
+display.draw(button_inst);
+
+sf::Text sf_name;
+sf_name.setFont(assets->font);
+sf_name.setString(button[i].name.c_str());
+sf_name.setColor(sf::Color(240,240,240,255));
+sf_name.setPosition(button[i].x,button[i].y);
+sf_name.setCharacterSize(10);
+display.draw(sf_name);
+
+sf::Text sf_desc;
+sf_desc.setFont(assets->font);
+sf_desc.setString(button[i].desc.c_str());
+sf_desc.setColor(sf::Color(240,240,240,255));
+sf_desc.setPosition(button[i].x + sf_desc.getLocalBounds().height,button[i].y);
+sf_desc.setCharacterSize(10);
+display.draw(sf_desc);
 }
-al_draw_scaled_rotated_bitmap(assets->jet_texture[player->choice.player_jet],al_get_bitmap_width(assets->jet_texture[player->choice.player_jet])/2,al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])/2,
-button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])-50,2,2,0,0);
+
+{
+sf::Sprite sf_player;
+sf_player.setTexture(assets->jet_texture[player->choice.player_jet]);
+sf_player.setOrigin(23,23);
+sf_player.setPosition(button[0].x,button[0].y - button[0].height/2 - 23);
+display.draw(sf_player);
+}
 
 /*########
 # BUTTON #
@@ -175,11 +198,19 @@ button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_text
 
 for(int i = 0; i< 2; i++)
 {
-al_draw_filled_rectangle(button_click[i].x - button_click[i].width/2,button_click[i].y - button_click[i].height/2,button_click[i].x + button_click[i].width/2,button_click[i].y + button_click[i].height/2,
-al_map_rgb(20,20,0));
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),button_click[i].x,button_click[i].y,ALLEGRO_ALIGN_CENTRE,button_click[i].name.c_str());
+sf::RectangleShape sf_button(sf::Vector2f(   button_click[i].width,button_click[i].height));
+sf_button.setFillColor(sf::Color(20,20,0,255));
+sf_button.setOrigin(button_click[i].width/2,button_click[i].height/2);
+sf_button.setPosition(button_click[i].x,button_click[i].y);
+display.draw(sf_button);
 
-
+sf::Text sf_text;
+sf_text.setFont(assets->font);
+sf_text.setPosition(button_click[i].x,button_click[i].y);
+sf_text.setString(button_click[i].name.c_str());
+sf_text.setColor(sf::Color(240,240,240,255));
+sf_text.setCharacterSize(10);
+display.draw(sf_text);
 
 }
 
@@ -191,6 +222,7 @@ al_draw_text(alleg5->font,al_map_rgb(240,240,240),button_click[i].x,button_click
 /*########
 ## GRAPH #
 ########*/
+/*
 int graph_pos_y = 220; //offset from button 0
 al_draw_filled_rectangle(button[0].x - 50, button[0].y-graph_pos_y, button[0].x + 50,button[0].y-graph_pos_y-100,al_map_rgb(0,0,0));
 
@@ -241,7 +273,7 @@ al_draw_textf(alleg5->font,color_override,button[0].x - 50 + secondary->high_pos
 al_draw_textf(alleg5->font,color_override,button[0].x ,button[0].y-graph_pos_y-250,0,"-> %.2f max deg/s",assets->jet_data[player->choice.player_jet].alter_limit.alter.turn_speed * 180. / PI * assets->config.FPS);
 }
 
-
+*/
 
  
 
@@ -250,7 +282,7 @@ al_draw_textf(alleg5->font,color_override,button[0].x ,button[0].y-graph_pos_y-2
 }
 
 
-int eq_select(struct LevelInst * lvl,struct asset_data * assets, allegro5_data* alleg5)
+int eq_select(struct LevelInst * lvl,struct asset_data * assets, sf::RenderWindow & display)
 {
 std::array<box_string, 4> button = {{{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90}}};
 std::array<box_string, 2> button_click = {{{.width = 190, .height = 90, .name = "<- MAP"},{.width = 190, .height = 90, .name = "MISSION ->"}}};
@@ -260,7 +292,7 @@ struct graph_data primary;
 struct graph_data secondary;
 
 
-update_button_pos(button,button_click,alleg5);
+update_button_pos(button,button_click,display);
 
 
 lvl->radar.range_dist = 1800;
@@ -273,77 +305,71 @@ lvl->radar.mode = 0;
 update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
 if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
 
-
+sf::Event event;
 
 bool kill = 0;
-bool redraw = 1;
 bool quit = 0;
-ALLEGRO_MOUSE_STATE mouse;
-al_set_mouse_z(0); //zero the scroll
-//al_get_mouse_state_axis(&mouse, 2) //for reading scroll position
+
+
 while(!kill && !quit)
 {
-    al_wait_for_event(alleg5->queue,&alleg5->event);
-    switch (alleg5->event.type)
-    {
-        case ALLEGRO_EVENT_DISPLAY_RESIZE:
+
+        /*case ALLEGRO_EVENT_DISPLAY_RESIZE:
         {
             al_acknowledge_resize(alleg5->display); 
             if(assets->config.autoUIscale) assets->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
             update_button_pos(button,button_click,alleg5);
         }
-        break;
-        case ALLEGRO_EVENT_DISPLAY_CLOSE: quit = 1; break;
-        case ALLEGRO_EVENT_TIMER: redraw = 1; break;
-        case ALLEGRO_EVENT_MOUSE_AXES:
+        break;*/
+        while(display.pollEvent(event))
         {
-            al_get_mouse_state(&mouse);
-            if(al_get_mouse_state_axis(&mouse, 2) != 0)
-            {
-                update(button,&lvl->player.choice,&mouse);
-                update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
-                if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
-            }
-            break;
-        }
-        case ALLEGRO_EVENT_KEY_DOWN:
-        {
-            switch(alleg5->event.keyboard.keycode)
-            {
-                case ALLEGRO_KEY_ESCAPE:
-                return LVL_SELECTION;
-                break;
-                case ALLEGRO_KEY_F: kill = 1; break;
-            }
-        break;
-        }
-        case ALLEGRO_EVENT_MOUSE_BUTTON_UP:
-        {
-            int decision = process_click(button_click,&mouse);
 
-            switch(decision)
+            switch (event.type)
             {
-                case 0:
-                return LVL_SELECTION;
-                break;
-                case 1:
-                kill = 1;
-                break;
+            case sf::Event::Closed: quit = 1; break;
             }
 
+            if (event.type == sf::Event::MouseWheelScrolled)
+            {
+                if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel)
+                {
+                    sf::Vector2i mouse = sf::Mouse::getPosition(display);
+                    update(button,&lvl->player.choice,mouse,event.mouseWheelScroll.delta);
+                    update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
+                    if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
+                }
+            }
+            
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) return LVL_SELECTION;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::F)) kill = 1;
+            
+            
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+            {
+                sf::Vector2i mouse = sf::Mouse::getPosition(display);
+                int decision = process_click(button_click,mouse);
+
+                switch(decision)
+                {
+                    case 0:
+                    return LVL_SELECTION;
+                    break;
+                    case 1:
+                    kill = 1;
+                    break;
+                }
+
+            }
         }
-        break;
+
+
+    {
+        //draw sequence
+        map_button(button,&lvl->player.choice);
+        draw(button,button_click,assets,display,&lvl->player,&primary,&secondary);
+        display.display();
+        display.clear(sf::Color(27,27,27,255));
     }
-
-if(redraw && al_is_event_queue_empty(alleg5->queue))
-{
-    //draw sequence
-    map_button(button,&lvl->player.choice);
-    draw(button,button_click,assets,alleg5,&lvl->player,&primary,&secondary);
-    al_flip_display();
-    al_clear_to_color(al_map_rgb(27,27,27));
-    redraw = 0;
-}
 
 
 
@@ -395,9 +421,6 @@ void destroy_level(asset_data * asset, LevelInst * level)
 
 int spawn_level(asset_data * asset, LevelInst * level)
 {
-    
-    al_clear_to_color(al_map_rgb(0,0,0));
-    al_flip_display();
     destroy_level(asset,level);
     level->gift = (asset->lvl_data[level->level_name].isBoss && asset->lvl_data[level->level_name].next_level == ENUM_BKGR_TYPE_FIN ? spawn_riven() : nullptr);
 
@@ -407,7 +430,7 @@ int spawn_level(asset_data * asset, LevelInst * level)
     level->jet_q.push_back(player);
     level->nextID++;
     level->jet_q.front().curr.x = 300;
-    level->jet_q.front().curr.y = al_get_bitmap_height(asset->bkgr_texture[level->level_name])/2;
+    level->jet_q.front().curr.y = asset->bkgr_texture[level->level_name].getSize().y/2;
     enemy_spawn(level,asset);
     
     asset->scale_factor = asset->config.zoomUpperLimit;
@@ -431,8 +454,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         {
         int amnt[] = {4,6,1,0,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
-        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
-        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_height = asset->bkgr_texture[i].getSize().y;
+        asset->lvl_data[i].map_width = asset->bkgr_texture[i].getSize().x;
         asset->lvl_data[i].next_level = ATLANTIC;
         asset->lvl_data[i].isBoss = false;
         break;
@@ -442,8 +465,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         int amnt[] = {2,0,0,2,0,0};
         //int amnt[] = {0,0,0,0,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
-        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
-        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_height =  asset->bkgr_texture[i].getSize().y;  //asset->bkgr_texture[i].getSize().y;
+        asset->lvl_data[i].map_width = asset->bkgr_texture[i].getSize().x;
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = false;
         break;
@@ -453,8 +476,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         int amnt[] = {8,6,0,1,0,0};
         //int amnt[] = {0,0,0,12,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
-        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
-        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_height = asset->bkgr_texture[i].getSize().y;
+        asset->lvl_data[i].map_width = asset->bkgr_texture[i].getSize().x;
         asset->lvl_data[i].next_level = DNEPR;
         asset->lvl_data[i].isBoss = false;
         break;
@@ -464,8 +487,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         int amnt[] = {3,0,0,0,2,0};
         //int amnt[] = {0,0,0,0,0,0};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
-        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
-        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_height = asset->bkgr_texture[i].getSize().y;
+        asset->lvl_data[i].map_width = asset->bkgr_texture[i].getSize().x;
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = true;
         break;
@@ -475,8 +498,8 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         //int amnt[] = {0,0,0,0,0,0};
         int amnt[] = {0,3,3,0,0,1};
         std::copy(amnt,amnt+ENUM_BOSS_TYPE_FIN,asset->lvl_data[i].enemy_quality);
-        asset->lvl_data[i].map_height = al_get_bitmap_height(asset->bkgr_texture[i]);
-        asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
+        asset->lvl_data[i].map_height = asset->bkgr_texture[i].getSize().y;
+        asset->lvl_data[i].map_width = asset->bkgr_texture[i].getSize().x;
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = true;
         break;

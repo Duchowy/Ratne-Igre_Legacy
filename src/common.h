@@ -1,19 +1,7 @@
 #ifndef ALLEG_5
 #define ALLEG_5
-#include<allegro5/allegro5.h>
-#include<allegro5/allegro_primitives.h>
-#include<allegro5/allegro_font.h>
-#include<allegro5/allegro_image.h>
-#include<allegro5/allegro_ttf.h>
+#include <SFML/Graphics.hpp>
 
-struct allegro5_data
-{
-ALLEGRO_DISPLAY * display;
-ALLEGRO_EVENT event;
-ALLEGRO_EVENT_QUEUE * queue;
-ALLEGRO_TIMER * timer;
-ALLEGRO_FONT * font;
-};
 
 #endif
 

@@ -34,11 +34,12 @@ struct asset_data
 {
 float scale_factor;
 struct config_data config;
-ALLEGRO_BITMAP * bkgr_texture [ENUM_BKGR_TYPE_FIN];
-ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
-ALLEGRO_BITMAP * proj_texture [ENUM_PROJECTILE_TYPE_FIN];
-ALLEGRO_BITMAP * prt_texture[ENUM_PRT_TYPE_FIN];
-ALLEGRO_BITMAP * ui_texture[1];
+sf::Texture bkgr_texture [ENUM_BKGR_TYPE_FIN];
+sf::Texture jet_texture [ENUM_BOSS_TYPE_FIN];
+sf::Texture proj_texture [ENUM_PROJECTILE_TYPE_FIN];
+sf::Texture prt_texture[ENUM_PRT_TYPE_FIN];
+sf::Texture ui_texture[1];
+sf::Font font;
 
 struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
 struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];

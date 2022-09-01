@@ -3,8 +3,8 @@
 #include "main.h"
 #include "render_level.h"
 
-void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FONT * font)
-{
+void debug_data(struct LevelInst * level, struct asset_data * asset, sf::Window & display)
+{/*
     std::vector<JetInst>::iterator object = level->jet_q.begin();
         std::string buffer = "";
 
@@ -20,7 +20,7 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FON
                 case 5: buffer = std::to_string(object->weapon[0].engaged)+" shoot"; break;
             }
             al_draw_text(font,al_map_rgb(240,0,240),0,i*10,0,buffer.c_str());
-        }
+        }*/
 }
 
 
@@ -53,13 +53,14 @@ break;
 }
 
 
-void update_prompt_screen(allegro5_data * alleg5, LevelInst * level)
+void update_prompt_screen(sf::Window & display, LevelInst * level)
 {
 short num = 0;
 for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++ , num++)
 {
-    object->body.x = al_get_display_width(alleg5->display)/2 + 25*num;
-    object->body.y = al_get_display_height(alleg5->display)/2 + 15*num;
+    object->body.x = display.getSize().x/2 + 25*num;
+    object->body.y = display.getSize().y/2 + 15*num;
+    
 }
 
 }
@@ -94,10 +95,10 @@ return text;
 
 
 
-void spawn_prompt_screen(asset_data * asset, allegro5_data * alleg5, LevelInst * level, unsigned short type) 
+void spawn_prompt_screen(asset_data * asset, sf::RenderWindow & display, LevelInst * level, unsigned short type) 
 {
-int display_width = al_get_display_width(alleg5->display);
-int display_height = al_get_display_height(alleg5->display); 
+int display_width = display.getSize().x;
+int display_height = display.getSize().y; 
 
 
 for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->type == type) return;
@@ -200,23 +201,40 @@ level->prompt_q.push_back(prompt);
 
 
 
-void draw_pause_screen(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
+void draw_pause_screen(struct LevelInst * level, struct asset_data * asset, sf::RenderWindow & display)
 {
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display); 
+int window_width = display.getSize().x;
+int window_height = display.getSize().y;
 
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_filled_rectangle(0,0,window_width,window_height,al_map_rgba(10,10,10,120));
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-
-al_draw_filled_rectangle(window_width/2-300,window_height/2-100,window_width/2+300,window_height/2+100,al_map_rgb(27,27,17));
-al_draw_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2-15,ALLEGRO_ALIGN_CENTER,"PAUSED");
-std::string desc = "Press ESC to unpause.";
+sf::RectangleShape shade(sf::Vector2f(window_width,window_height));
+shade.setFillColor(sf::Color(10,10,10,120));
+display.draw(shade);
 
 
-if(level->level_name < ENUM_LVL_TYPE_FIN) desc += "\nPress F to exit to menu.";
-else desc += "\nPress F to reset mission.";
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),window_width/2,window_height/2,400,10,ALLEGRO_ALIGN_CENTER,desc.c_str());
+sf::RectangleShape prompt(sf::Vector2f(600,200));
+prompt.setPosition(sf::Vector2f(window_width/2,window_height/2));
+display.draw(prompt);
+
+//al_draw_filled_rectangle(window_width/2-300,window_height/2-100,window_width/2+300,window_height/2+100,al_map_rgb(27,27,17));
+sf::Text title;
+title.setFont(asset->font);
+title.setString("PAUSED");
+title.setPosition(sf::Vector2f(window_width/2,window_height/2-15));
+display.draw(title);
+
+
+std::string desc_text = "Press ESC to unpause.";
+if(level->level_name < ENUM_LVL_TYPE_FIN) desc_text += "\nPress F to exit to menu.";
+else desc_text += "\nPress F to reset mission.";
+
+
+sf::Text desc;
+desc.setFont(asset->font);
+desc.setString(desc_text.c_str());
+desc.setPosition(sf::Vector2f(window_width/2,window_height/2));
+display.draw(desc);
+
+
 
 }
 
@@ -230,14 +248,14 @@ if(direction < 0) assets->scale_factor-=0.1;
 
 if(assets->scale_factor < assets->config.zoomLowerLimit) assets->scale_factor = assets->config.zoomLowerLimit;
 if(assets->scale_factor > assets->config.zoomUpperLimit) assets->scale_factor = assets->config.zoomUpperLimit;
-al_set_mouse_z(0); //ticker bound
+//al_set_mouse_z(0); //ticker bound
 }
 
 
-void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, struct allegro5_data * alleg5)
+void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, sf::RenderWindow & display)
 {
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display);
+int window_width = display.getSize().x;
+int window_height = display.getSize().y;
 
 {//jet section
     std::vector<JetInst>::iterator player = level->jet_q.begin();
@@ -256,25 +274,31 @@ int window_height = al_get_display_height(alleg5->display);
 
         int full_hp = asset->jet_data[object->type].hp;
 
-        if(dist < asset->config.fadeDistance)
+        sf::Sprite obj_model;
+        obj_model.setTexture(asset->jet_texture[object->type]);
+        obj_model.setOrigin(sf::Vector2f(23,23));
+        obj_model.setPosition(x_diff, y_diff);
+        obj_model.setRotation(object->curr.turn_angle * 180);
+
+
+
+        if(dist >= asset->config.fadeDistance)
         {
-        al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
-        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
+        obj_model.setColor(sf::Color(255,255,255,255 - 255*(dist-600)/200));
         }
-        else
+        display.draw(obj_model);
+        
+        if(object->ID == player->botTarget && level->radar.mode == 2) 
         {
-            al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-            al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
-            x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
-            );
-            al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+            sf::CircleShape circle(21);
+            circle.setOutlineThickness(2);
+            circle.setOutlineColor(sf::Color(240,10,10,255));
+            circle.setFillColor(sf::Color(255,255,255,0));
+            display.draw(circle);
         }
-        
-        if(object->ID == player->botTarget && level->radar.mode == 2) al_draw_circle(x_diff,y_diff,21,al_map_rgb(240,10,10),2);
-        
 
         
-        
+        /*
         al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
             if(asset->jet_data[object->type].isBoss) 
             {
@@ -286,14 +310,21 @@ int window_height = al_get_display_height(alleg5->display);
                 al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
                 al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
             }
+        to find elegant way*/ 
+
         if(object->mode != PATROL)
         {
-            al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+            sf::Text text;
+            text.setString("!");
+            text.setFont(asset->font);
+            text.setColor(sf::Color(240,240,0,255));
+            text.setPosition(sf::Vector2f(x_diff+8,y_diff-9));
+            display.draw(text);
 
         }
         #ifdef DEBUG
-            al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
-            al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->at_work);
+            //al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
+            //al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->at_work);
         #endif
 
 
@@ -307,41 +338,38 @@ int window_height = al_get_display_height(alleg5->display);
 
 for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++)
 {
-if(asset->proj_data[object->type].trait.DMGfall)
-{
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_tinted_scaled_rotated_bitmap(asset->proj_texture[object->type],al_map_rgba_f(object->color.r,  object->color.g,  object->color.b,  sqrt((float) object->decay / (asset->proj_data[object->type].decay + object->launcher->decay))),23,23,
-    asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-    asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-}else
-{
 
-al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
-    asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-    asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
 
+    sf::Sprite obj_model;
+    obj_model.setTexture(asset->jet_texture[object->type]);
+    obj_model.setOrigin(sf::Vector2f(23,23));
+    obj_model.setPosition(asset->scale_factor *(object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2);
+    obj_model.setRotation(object->curr.turn_angle * 180);
+    obj_model.setColor(sf::Color(object->color.r,  object->color.g,  object->color.b,(asset->proj_data[object->type].trait.DMGfall ? sqrt((float) object->decay / (asset->proj_data[object->type].decay + object->launcher->decay)) * 255 : 255)));
+    display.draw(obj_model);
 
 }
 
 
-
-
-}
-
-
-
-
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 //particle section
 {
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
-        ALLEGRO_COLOR color = al_map_rgba_f(
-            (object->color ? object->color->r : 1),(object->color ? object->color->g : 1),(object->color ? object->color->b : 1)
-            , (object->isDecaying ? (float)object->decay / asset->prt_data[object->type].decay  : 1  ));
+        sf::Color color(
+            (object->color ? object->color->r : 255),(object->color ? object->color->g : 255),(object->color ? object->color->b : 255)
+            , (object->isDecaying ? (float)object->decay / asset->prt_data[object->type].decay  : 255  ));
 
-        if(object->type == PIXEL)
+
+        sf::Sprite obj_model;
+        
+
+        obj_model.setTexture(asset->jet_texture[object->type]);
+        obj_model.setOrigin(sf::Vector2f(24,24));
+        obj_model.setPosition(sf::Vector2f(asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2));
+        obj_model.setRotation(object->curr.turn_angle * 180);
+        
+
+        /*if(object->type == PIXEL) //not used
         {
             al_draw_filled_rectangle(asset->scale_factor * (object->curr.x - reference->curr.x -object->scale_x/2.) +window_width/2,
             asset->scale_factor * (object->curr.y - reference->curr.y -object->scale_y/2.) + window_height/2,
@@ -349,49 +377,41 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
             asset->scale_factor * (object->curr.y - reference->curr.y +object->scale_y/2.) + window_height/2,
             color
             );
-        }else
+        }else*/
         {
             if(asset->prt_data[object->type].anim.isAnimated)
             {
                 int which_region = ( (asset->prt_data[object->type].decay - object->decay) /asset->prt_data[object->type].anim.animationClock);
-
-
-
-                al_draw_tinted_scaled_rotated_bitmap_region(asset->prt_texture[object->type],which_region*48,0,48,48,color,24,24,
-                asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-                asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
-                object->curr.turn_angle,object->flip_img
-                );
+                
+                obj_model.setTextureRect(sf::IntRect(which_region*48,0,48,48));
+                //address flip
                 
             }
-            else
-            {
-                al_draw_tinted_scaled_rotated_bitmap(asset->prt_texture[object->type],color,23,23,
-            asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
-            object->curr.turn_angle,object->flip_img
-            );
-
-            }
+            
 
             
         }
-
+        display.draw(obj_model);
     }
 }
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+
 
 
 }
 
 
 
-void draw_ui(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5)
+void draw_ui(struct LevelInst * level, struct asset_data * asset, sf::RenderWindow & display)
 {
-int window_width = al_get_display_width(alleg5->display);
-int window_height = al_get_display_height(alleg5->display);
+int window_width = display.getSize().x;
+int window_height = display.getSize().y;
 
 std::vector<JetInst>::iterator player = level->jet_q.begin();
-al_draw_filled_rectangle(window_width- asset->config.UIscale * 80,window_height - asset->config.UIscale*35,window_width,window_height,al_map_rgb(0,20,20));
+sf::RectangleShape HP_background(sf::Vector2f(asset->config.UIscale * 80,asset->config.UIscale*35));
+HP_background.setPosition(sf::Vector2f(window_width- asset->config.UIscale * 80,window_height - asset->config.UIscale*35));
+HP_background.setFillColor(sf::Color(0,20,20,255));
+display.draw(HP_background);
+
 
 /*########
 ### HUD ##
@@ -405,31 +425,35 @@ al_draw_filled_rectangle(window_width- asset->config.UIscale * 80,window_height 
 ########*/
 {
 char const * HP_text;
-ALLEGRO_COLOR HP_color;
+sf::Color HP_color;
 float current_HP = (float) player->hp / asset->jet_data[player->type].hp;
 if(current_HP > 0.9)
 {
     HP_text = "OK";
-    HP_color = al_map_rgb(0,240,0);
+    HP_color = sf::Color(0,240,0,255);
 }
 else if ( current_HP > 0.7)
 {
     HP_text = "OK";
-    HP_color = al_map_rgb(240,240,0);
+    HP_color = sf::Color(240,240,0,255);
 
 }
 else if( current_HP > 0.3) 
 {
     HP_text = "Damaged";
-    HP_color = al_map_rgb(240,240,0);
+    HP_color = sf::Color(240,240,0,255);
 }
 else
 {
     HP_text = "Damaged";
-    HP_color = al_map_rgb(240,0,0);
+    HP_color = sf::Color(240,0,255);
 }
-
-al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,HP_text)-10 * asset->config.UIscale,window_height-20*asset->config.UIscale,0,HP_text);
+sf::Text draw_HP_text;
+draw_HP_text.setFont(asset->font);
+draw_HP_text.setString(HP_text);
+draw_HP_text.setPosition(window_width- draw_HP_text.getGlobalBounds().width  -10 * asset->config.UIscale,window_height-20*asset->config.UIscale);
+draw_HP_text.setColor(HP_color);
+display.draw(draw_HP_text);
 }
 
 
@@ -437,51 +461,90 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
 ## AMMO ##
 ########*/
 {
+    
+
+    bool used;
+    sf::Text GunText;
+    used = (player->weapon[0].ammo != 0);
+    GunText.setFont(asset->font);
+    GunText.setString("GUN");
+    GunText.setColor(sf::Color(100+140*used,100+140*used,100+140*used,255));
+    GunText.setPosition(sf::Vector2f(window_height-12,0));
+    sf::Text MslText;
+    used = (player->weapon[1].ammo != 0);
+    MslText.setFont(asset->font);
+    MslText.setString("MSL");
+    MslText.setColor(sf::Color(100+140*used,100+140*used,100+140*used,255));
+    MslText.setPosition(sf::Vector2f(window_height-12,GunText.getLocalBounds().width + 5));
+    sf::Text SpcText;
+    used = (player->weapon[2].ammo != 0);
+    SpcText.setFont(asset->font);
+    SpcText.setString("SPC");
+    SpcText.setColor(sf::Color(100+140*used,100+140*used,100+140*used,255));
+    SpcText.setPosition(sf::Vector2f(window_height-12,GunText.getLocalBounds().width + 5 + MslText.getLocalBounds().width + 5));
+
+    sf::RectangleShape ammo_theme(sf::Vector2f((GunText.getLocalBounds().width + 5 + MslText.getLocalBounds().width + 5 + SpcText.getLocalBounds().width + 5) * asset->config.UIscale,20 * asset->config.UIscale));
+    ammo_theme.setFillColor(sf::Color(0,20,20,255));
+    ammo_theme.setPosition(sf::Vector2f(0,window_height- 20 * asset->config.UIscale));
+
+    display.draw(ammo_theme);
+    display.draw(GunText);
+    display.draw(MslText);
+    display.draw(SpcText);
+
+
+
     bool SPCisGun = (player->weapon[2].launcher->projectile - asset->proj_data < ENUM_BULLET_TYPE_FIN)  ;
 
 
-    al_draw_filled_rectangle(0,window_height,(al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5) * asset->config.UIscale
-    ,window_height- 20 * asset->config.UIscale,al_map_rgb(0,20,20));                                                 //font theme
-
     float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo * asset->jet_data[player->type].weapon_mult[0]);
     float mag_percentage = (float) player->weapon[0].magazine / player->weapon[0].launcher->magazine;
-    ALLEGRO_COLOR ammo_color;
     int rectangle_height = 60;
     
 //ammo indicator
-    ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );
-    al_draw_filled_rectangle(0,window_height-20 * asset->config.UIscale, al_get_text_width(alleg5->font,"GUN") * asset->config.UIscale, window_height -20* asset->config.UIscale - rectangle_height*ammo_percentage* asset->config.UIscale,ammo_color);    
-    
+    sf::Color ammo_color = (ammo_percentage > 0.4 ? sf::Color(250,250,250,255) : sf::Color(250,pow((ammo_percentage/0.4)*250,3),pow((ammo_percentage/0.4)*250,3),255) );
+    sf::RectangleShape GunBox(sf::Vector2f(GunText.getLocalBounds().width , rectangle_height*ammo_percentage* asset->config.UIscale));
+    GunBox.setPosition(sf::Vector2f(0,window_height - 20 * asset->config.UIscale));
+    GunBox.setFillColor(ammo_color);
+    display.draw(GunBox);
+
     //mag cooler
     if(mag_percentage <= 0.4)
     {
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-    al_draw_filled_rectangle(window_width/2 - 120, window_height/2 + 40,window_width/2 - 100, window_height/2 - 40 + ( 80.0 * mag_percentage), mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+        sf::RectangleShape GunCool(sf::Vector2f(20,80.0 * mag_percentage));
+        GunCool.setOrigin(10,40);
+        GunCool.setPosition(window_width/2-110,window_height/2);
+        GunCool.setFillColor(mag_percentage ? sf::Color(250,250,250,153 * (float)(0.4 - mag_percentage) / 0.4) : sf::Color(240,120,60,153));
+        display.draw(GunCool);
     }
 
 
 
 
-
+/*
     bool used;
     used = (player->weapon[0].ammo != 0);
     al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),0,window_height-12* asset->config.UIscale,0,"GUN");
     used = (player->weapon[1].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(al_get_text_width(alleg5->font,"GUN")+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"MSL");    //rocket bar
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(GunText.getLocalBounds().width+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"MSL");    //rocket bar
     used = (player->weapon[2].ammo != 0);
-    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"SPC");    //rocket bar
+    al_draw_text(alleg5->font,al_map_rgb(100+140*used,100+140*used,100+140*used),(GunText.getLocalBounds().width+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-12* asset->config.UIscale,0,"SPC");    //rocket bar
+*/
+
+
 
 //missile indicator
+    /* rewrite
     for(int i = 0; i< player->weapon[1].ammo; i++)
     {
     ALLEGRO_COLOR bar_color = al_map_rgb(200,180,100);//al_map_rgb(240,230,140);
     if(i+player->weapon[1].magazine >= player->weapon[1].ammo) bar_color = al_map_rgb(240,120,60);
-    al_draw_line((al_get_text_width(alleg5->font,"GUN")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
+    al_draw_line((GunText.getLocalBounds().width+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
     
-    (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL"))* asset->config.UIscale ,window_height-20.5* asset->config.UIscale -3*i,
+    (GunText.getLocalBounds().width+5 + al_get_text_width(alleg5->font,"MSL"))* asset->config.UIscale ,window_height-20.5* asset->config.UIscale -3*i,
     bar_color,1);
     }
+    */
 //special indicator
 
 
@@ -489,35 +552,39 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
     {
         float ammo_percentage = (float) player->weapon[2].ammo / (asset->laun_data[player->weapon[2].type].ammo * asset->jet_data[player->type].weapon_mult[2]);
         float mag_percentage = (float) player->weapon[2].magazine / player->weapon[2].launcher->magazine;
-        ALLEGRO_COLOR ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );;
+
+        sf::Color ammo_color = (ammo_percentage > 0.4 ? sf::Color(250,250,250,255) : sf::Color(250,pow((ammo_percentage/0.4)*250,3),pow((ammo_percentage/0.4)*250,3),255) );
+        sf::RectangleShape SpcBox(sf::Vector2f(SpcText.getLocalBounds().width , rectangle_height*ammo_percentage* asset->config.UIscale));
+        SpcBox.setPosition(sf::Vector2f(GunText.getLocalBounds().width + 5 + MslText.getLocalBounds().width + 5,window_height - 20 * asset->config.UIscale));
+        SpcBox.setFillColor(ammo_color);
+        display.draw(SpcBox);
+
+        //mag cooler
         if(mag_percentage <= 0.4)
         {
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-        al_draw_filled_rectangle(window_width/2 + 120, window_height/2 + 40,window_width/2 + 100, window_height/2 - 40 + ( 80.0 * mag_percentage),  mag_percentage ? al_map_rgba_f(0.98,0.98,0.98,0.6 * (float)(0.4 - mag_percentage) / 0.4) : al_map_rgba(240,120,60,153));
-        al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-        }
-        
-        al_draw_filled_rectangle(
-        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-20* asset->config.UIscale,
-        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5)* asset->config.UIscale, window_height -20* asset->config.UIscale - rectangle_height*ammo_percentage* asset->config.UIscale,ammo_color
-        );    
+            sf::RectangleShape SpcCool(sf::Vector2f(20,80.0 * mag_percentage));
+            SpcCool.setOrigin(10,40);
+            SpcCool.setPosition(window_width/2+110,window_height/2);
+            SpcCool.setFillColor(mag_percentage ? sf::Color(250,250,250,153 * (float)(0.4 - mag_percentage) / 0.4) : sf::Color(240,120,60,153));
+            display.draw(SpcCool);
+        }    
 
     }
     else
     {
-
+/*rewrite
         for(int i = 0; i< player->weapon[2].ammo; i++)
     {
     ALLEGRO_COLOR bar_color = al_map_rgb(250,250,250);
     if(i+player->weapon[2].magazine >= player->weapon[2].ammo) bar_color = al_map_rgb(200,180,100);
     al_draw_line(
-        (al_get_text_width(alleg5->font,"GUN")+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
-        (al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i,
+        (GunText.getLocalBounds().width+5+al_get_text_width(alleg5->font,"MSL")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i ,
+        (GunText.getLocalBounds().width+5 + al_get_text_width(alleg5->font,"MSL") + al_get_text_width(alleg5->font,"SPC")+5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*i,
     bar_color,1);
     }
 
 
-
+*/
 
     }
 
@@ -532,7 +599,7 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
 /*########
 ## RADAR #
 ########*/
-
+/*
 switch(asset->config.radarType)
 {
 case 1:
@@ -587,7 +654,7 @@ else indicator = al_map_rgb(0,240,0);
 float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
 
 
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+//al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 al_draw_filled_pieslice(window_width/2,window_height/2,48 * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
 
 if(level->radar.mode == 2)
@@ -635,7 +702,7 @@ al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle), window_height/2 +
 
 al_draw_arc(window_width/2,window_height/2,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
 
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+//al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_pointer),
             window_width/2 + 48*cos(rad_pointer)* asset->config.UIscale,window_height/2 + 48*sin(rad_pointer)* asset->config.UIscale,
             indicator,0.8); //radar seeker line
@@ -656,7 +723,7 @@ if(asset->config.additionalRadar)
     float rad_pointer = angle_addition(-PI/2,level->radar.turn_angle);
 
 
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+    //al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
     al_draw_filled_pieslice(radar_x_offset,radar_y_offset,48 * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f( 0.2,0.2,0.2,0.7));
 
     if(level->radar.mode == 2)
@@ -704,7 +771,7 @@ if(asset->config.additionalRadar)
 
     al_draw_arc(radar_x_offset,radar_y_offset,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
 
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    //al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
     al_draw_line(radar_x_offset + 18*cos(rad_pointer),radar_y_offset + 18*sin(rad_pointer),
                 radar_x_offset + 48*cos(rad_pointer)* asset->config.UIscale,radar_y_offset + 48*sin(rad_pointer)* asset->config.UIscale,
                 indicator,0.8); //radar seeker line
@@ -723,18 +790,19 @@ if(asset->config.additionalRadar)
 
 al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
     window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
-
+*/
 
 
 /*########
 # PROMPT #
 ########*/
+
 {
 for(std::vector<prompt_screen>::iterator prompt = level->prompt_q.begin(); prompt != level->prompt_q.end(); prompt++)
 {
-al_draw_filled_rectangle(prompt->body.x-prompt->body.width/2,prompt->body.y-prompt->body.height/2,prompt->body.x+prompt->body.width/2,prompt->body.y+prompt->body.height/2,al_map_rgb(27,27,17));
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x ,prompt->body.y- prompt->body.height/2 + 10,prompt->body.width-100,10,ALLEGRO_ALIGN_CENTER,prompt->body.name.c_str());
-al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x ,prompt->body.y - prompt->body.height/3,prompt->body.width-50,10,ALLEGRO_ALIGN_CENTER,prompt->body.desc.c_str());
+//al_draw_filled_rectangle(prompt->body.x-prompt->body.width/2,prompt->body.y-prompt->body.height/2,prompt->body.x+prompt->body.width/2,prompt->body.y+prompt->body.height/2,al_map_rgb(27,27,17));
+//al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x ,prompt->body.y- prompt->body.height/2 + 10,prompt->body.width-100,10,ALLEGRO_ALIGN_CENTER,prompt->body.name.c_str());
+//al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x ,prompt->body.y - prompt->body.height/3,prompt->body.width-50,10,ALLEGRO_ALIGN_CENTER,prompt->body.desc.c_str());
 }
 }
 
@@ -745,7 +813,7 @@ al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),prompt->body.x ,prom
 
 if(level->pauseEngaged)
 {
-    draw_pause_screen(level,asset,alleg5);
+    draw_pause_screen(level,asset,display);
 }
 
 

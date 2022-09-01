@@ -19,7 +19,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
 
     if(type < ENUM_BULLET_TYPE_FIN)
     {
-        object.color = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+190)/255, .b = (float)(rand()%10+30)/255, .a = 1};
+        object.color = sf::Color((float)(rand()%20+230), (float)(rand()%20+190), (float)(rand()%10+30),255);
         object.alter = nullptr;
     }
     else

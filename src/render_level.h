@@ -2,6 +2,8 @@
 #define RENDER_LEVEL_H
 #include "common.h"
 
+
+
 void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FONT * font);
 void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, struct allegro5_data * alleg5);
 void draw_ui(struct LevelInst * level, struct asset_data * asset, struct allegro5_data * alleg5);

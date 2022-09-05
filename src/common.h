@@ -5,6 +5,9 @@
 #include<allegro5/allegro_font.h>
 #include<allegro5/allegro_image.h>
 #include<allegro5/allegro_ttf.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
+
 
 struct allegro5_data
 {

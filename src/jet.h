@@ -2,6 +2,10 @@
 #define JET_H
 #include "common.h"
 
+
+
+
+
 struct state{
 float x;
 float y;
@@ -10,8 +14,8 @@ float speed;
 };
 struct state_change{
 float turn_speed;
-unsigned short speed_mode;
 float target_angle;
+float target_speed;
 bool rotatable;
 bool acceleratable;
 };
@@ -56,6 +60,7 @@ unsigned short cooldown;
 unsigned short replenish_cooldown;
 unsigned short ammo;
 unsigned short magazine;
+float recoil;
 float spread;
 struct Projectile * projectile;
 };

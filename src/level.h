@@ -36,14 +36,16 @@ std::vector<RadarNode> node_q;
 
 
 struct ParticleInst{
-    unsigned int type;
+    short type;
+    ALLEGRO_BITMAP * bitmap;
     ALLEGRO_COLOR * color;
     struct state curr;
     float scale_x;
     float scale_y;
     struct state_change alter;
     int decay;
-    bool isDecaying; //change to isFading
+    bool isFading; //change to isFading
+    bool isFalling;
     unsigned short flip_img;
 };
 

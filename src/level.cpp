@@ -164,7 +164,7 @@ void decay(struct LevelInst * level, struct asset_data * asset)
     #pragma omp parallel for
     for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != level->proj_q.end(); object++) object->decay = (object->decay - 1 > 0 ? object->decay - 1 : 0);
     #pragma omp parallel for
-    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay--;
+    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++) object->decay = (object->decay - 1 > 0 ? object->decay - 1 : 0);
     for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++) object->decay--;
     for(std::vector<prompt_screen>::iterator object = level->prompt_q.begin(); object != level->prompt_q.end(); object++) if(object->decay > 0) object->decay--;
 
@@ -203,10 +203,41 @@ void garbage_collect(asset_data * asset, LevelInst * level)
     {
     if(object->hp <= 0) 
     {
+        if(asset->config.particlesEnabled)
+        {
+            ParticleInst temp1 = {
+            .type = JET,
+            .bitmap = asset->jet_texture[object->type],
+            .color = nullptr,
+            .curr = {
+                .x = object->curr.x,
+                .y = object->curr.y,
+                .turn_angle = object->curr.turn_angle,
+                .speed = object->curr.speed
+            },
+            .scale_x = 1,
+            .scale_y = 1,
+            .alter = {
+                .turn_speed = (float) rand()/RAND_MAX * 0.01 - 0.005,
+                .rotatable = 1,
+                .acceleratable = 0,
+            },
+            .decay = 180,
+            .isFading = true,
+            .isFalling = true,
+            .flip_img = 0
+        };
+
+        level->prt_q.push_back(temp1);
+
+        }
+
         level->enemy_quality[object->type]--;
         if(object->ability) delete object->ability;
         level->jet_q.erase(object);
         object--;
+
+        
     }
     }
 
@@ -348,9 +379,11 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
 
             if(asset->config.particlesEnabled)
             {
+                unsigned int type = (asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST);
+
                 
-                
-                    ParticleInst expl = {.type = (asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST),
+                    ParticleInst expl = {.type = type,
+                        .bitmap = asset->prt_texture[type],
                         .color = nullptr,
                         .curr = {.x = shell->curr.x, .y = shell->curr.y, .turn_angle = shell->curr.turn_angle, .speed = 0   },
                         .scale_x = (float) asset->proj_data[shell->type].radius/20,
@@ -361,7 +394,8 @@ for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != inpu
                             .acceleratable = false,
                         },
                         .decay = asset->prt_data[(asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST)].decay,
-                        .isDecaying = false,
+                        .isFading = false,
+                        .isFalling = false,
                         .flip_img = 0
                     };
                 
@@ -439,6 +473,7 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
 
     temp1 = {
         .type = FLARE,
+        .bitmap = asset->prt_texture[FLARE],
         .color = nullptr,
         .curr = {
             .x = object->curr.x,
@@ -454,11 +489,13 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
             .acceleratable = 0,
         },
         .decay = asset->prt_data[FLARE].decay,
-        .isDecaying = true,
+        .isFading = true,
+        .isFalling = false,
         .flip_img = 0
     };
     temp2 = {
         .type = FLARE,
+        .bitmap = asset->prt_texture[FLARE],
         .color = nullptr,
         .curr = {
             .x = object->curr.x,
@@ -474,7 +511,8 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
             .acceleratable = 0,
         },
         .decay = asset->prt_data[FLARE].decay,
-        .isDecaying = true,
+        .isFading = true,
+        .isFalling = false,
         .flip_img = ALLEGRO_FLIP_VERTICAL
     };
     move(&temp1.curr, asset->lvl_data[lvl->level_name].map_width, asset->lvl_data[lvl->level_name].map_height, 3/temp1.curr.speed);
@@ -545,6 +583,86 @@ do
 
 
 }
+
+void spawn_particle_pixel(asset_data * asset,LevelInst * level)
+{
+
+    
+    if(asset->config.particlesEnabled)
+    {
+        for(int i = 0; i< level->prt_q.size(); i++)
+        {
+            auto object = level->prt_q.at(i);
+
+            switch(object.type)
+            {
+                case JET:
+                {
+                    int num = 2 + rand()%6;
+                    if(  !(object.decay%2) && object.decay > asset->prt_data[PIXEL].decay/1.5)
+                    {
+                        for(int i = 0; i< num; i++)
+                        {
+                            bool GenerateLeft = i%2;
+
+                            ParticleInst temp1 = {
+                            .type = PIXEL,
+                            .bitmap = nullptr,
+                            .color = new ALLEGRO_COLOR,
+                            .curr = {
+                                .x = object.curr.x,
+                                .y = object.curr.y,
+                                .turn_angle = angle_addition(object.curr.turn_angle, (float)rand()/RAND_MAX * (GenerateLeft ?  -PI/30  : PI/30  )) ,
+                                .speed = object.curr.speed /2
+                            },
+                            .scale_x = 2,
+                            .scale_y = 2,
+                            .alter = {
+                                .turn_speed = (float) rand()/RAND_MAX * 0.01 - 0.005,
+                                .rotatable = 1,
+                                .acceleratable = 0,
+                            },
+                            .decay = (  object.decay > asset->prt_data[JET].decay ?   asset->prt_data[PIXEL].decay : object.decay ),
+                            .isFading = true,
+                            .isFalling = true,
+                            .flip_img = 0
+                            };
+
+                            short gray_coef = rand()%30 + 50;
+                            ALLEGRO_COLOR grey = {.r = (float)gray_coef/255, .g = (float)gray_coef/255, .b = (float)gray_coef/255, .a = 1};
+                            ALLEGRO_COLOR orange = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+115)/255, .b = (float)(rand()%10+10)/255, .a = 1};
+                            (*temp1.color) = (rand()%5 ? grey : orange );
+
+
+
+                            transform(&temp1.curr,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height, 0.5 + (float) rand()/RAND_MAX * 1.5, angle_addition(temp1.curr.turn_angle,(GenerateLeft ?  -PI/2  :  PI/2  )));
+                            level->prt_q.push_back(temp1);
+                        }
+
+
+
+                    }
+                }
+                break;
+
+
+
+            }
+        }
+
+
+
+    }
+
+
+
+
+}
+
+
+
+
+
 
 
 void process_radar(LevelInst * level)
@@ -617,11 +735,13 @@ bool kill = 0;
 bool redraw = 1;
 
 
-
 ALLEGRO_MOUSE_STATE mouse;
+ALLEGRO_KEYBOARD_STATE keyboard;
 
 while(!kill)
 {
+    
+
     lvl->jet_q.front().weapon[0].engaged = false; //temporary solution
     lvl->jet_q.front().weapon[2].engaged = false; //temporary solution
     al_wait_for_event(alleg5->queue,&alleg5->event);
@@ -646,12 +766,6 @@ while(!kill)
         {
             switch(alleg5->event.keyboard.keycode)
             {
-                case ALLEGRO_KEY_W:
-                lvl->jet_q.front().alter.speed_mode = AFTERBURNER;
-                break;
-                case ALLEGRO_KEY_S:
-                lvl->jet_q.front().alter.speed_mode = AIRBRAKE;
-                break;
                 case ALLEGRO_KEY_SPACE:
                 lvl->jet_q.front().weapon[1].engaged = 1;
                 break;
@@ -716,29 +830,40 @@ while(!kill)
             }
         break;
         }
-        case ALLEGRO_EVENT_KEY_UP:
-        {
-            switch(alleg5->event.keyboard.keycode)
-            {
-                case ALLEGRO_KEY_W:
-                lvl->jet_q.front().alter.speed_mode = STANDARD;
-                break;
-                case ALLEGRO_KEY_S:
-                lvl->jet_q.front().alter.speed_mode = STANDARD;
-                break;
-            }
-        break;
-        }
     }
     if(redraw && al_is_event_queue_empty(alleg5->queue))
     {
         int window_width = al_get_display_width(alleg5->display);
         int window_height = al_get_display_height(alleg5->display);
         { //player actions
-        al_get_mouse_state(&mouse);
-        if(mouse.buttons & 1) lvl->jet_q.front().weapon[0].engaged = 1; //left mouse button
-        if(mouse.buttons & 2) lvl->jet_q.front().weapon[2].engaged = 1; //left mouse button
-        lvl->jet_q.front().alter.target_angle = atan2((mouse.y-window_height/2) ,(mouse.x - window_width/2));
+            al_get_mouse_state(&mouse);
+            if(mouse.buttons & 1) lvl->jet_q.front().weapon[0].engaged = 1; //left mouse button
+            if(mouse.buttons & 2) lvl->jet_q.front().weapon[2].engaged = 1; //left mouse button
+            lvl->jet_q.front().alter.target_angle = atan2((mouse.y-window_height/2) ,(mouse.x - window_width/2));
+            
+            al_get_keyboard_state(&keyboard);
+            bool accelerate = al_key_down(&keyboard,ALLEGRO_KEY_W);
+            bool decelerate = al_key_down(&keyboard,ALLEGRO_KEY_S);
+
+            if(accelerate ^ decelerate)
+            {
+                
+                state_change_limit * player_limit = (lvl->jet_q.front().overwrite_limit ? lvl->jet_q.front().overwrite_limit : &assets->jet_data[lvl->jet_q.front().type].alter_limit);
+                double step = (player_limit->speed_limit[1] - player_limit->speed_limit[0]) / 100.;
+
+                if(accelerate) //accelerate
+                {
+                    lvl->jet_q.front().alter.target_speed = ( lvl->jet_q.front().alter.target_speed + step >= player_limit->speed_limit[1] ? player_limit->speed_limit[1] : lvl->jet_q.front().alter.target_speed + step );
+
+                }
+                if(decelerate) //accelerate
+                {
+                    lvl->jet_q.front().alter.target_speed = ( lvl->jet_q.front().alter.target_speed - step <= player_limit->speed_limit[0] ? player_limit->speed_limit[0] : lvl->jet_q.front().alter.target_speed - step );
+
+                }
+
+                
+            }
         }
         if(lvl->jet_q.front().hp == 0) return MISSION_INIT;
 //temporary solution
@@ -753,6 +878,7 @@ while(!kill)
         move_radar(lvl);
 
         collision(lvl,assets);
+        spawn_particle_pixel(assets,lvl);
 //draw
         render(lvl,assets,alleg5);
         redraw = 0;

@@ -39,6 +39,7 @@ ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
 ALLEGRO_BITMAP * proj_texture [ENUM_PROJECTILE_TYPE_FIN];
 ALLEGRO_BITMAP * prt_texture[ENUM_PRT_TYPE_FIN];
 ALLEGRO_BITMAP * ui_texture[1];
+ALLEGRO_SAMPLE * sound[2];
 
 struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];
 struct Ability abl_data[BOSS_ABILITY::ENUM_BOSS_ABILITY_FIN];
@@ -51,7 +52,7 @@ struct Launcher laun_data[ENUM_LAUNCHER_TYPE_FIN];
 
 
 struct Level lvl_data[ENUM_BKGR_TYPE_FIN];
-struct Particle prt_data[ENUM_PRT_TYPE_FIN];
+struct Particle prt_data[ENUM_NOTEXTURE_PRT_TYPE_FIN];
 };
 
 

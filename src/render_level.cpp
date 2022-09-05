@@ -13,7 +13,7 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, ALLEGRO_FON
             switch(i)
             {
                 case 0: buffer = std::to_string(object->alter.turn_speed); break;
-                //case 1: if(level->bullet_q.size())   buffer = std::to_string(level->bullet_q.front().curr.speed)+" bul speed"; break;
+                case 1: buffer = std::to_string(object->alter.target_speed)+" target speed"; break;
                 case 2: buffer = std::to_string(object->alter.target_angle)+" target"; break;
                 case 3: buffer = std::to_string(object->alter.turn_speed)+" turn speed"; break;
                 case 4: buffer = std::to_string(object->curr.speed)+" speed"; break;
@@ -337,11 +337,22 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 {
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
     {
+        float base_scale = (object->isFalling ? (float) object->decay / asset->prt_data[object->type].decay : 1 );
+
+
         ALLEGRO_COLOR color = al_map_rgba_f(
             (object->color ? object->color->r : 1),(object->color ? object->color->g : 1),(object->color ? object->color->b : 1)
-            , (object->isDecaying ? (float)object->decay / asset->prt_data[object->type].decay  : 1  ));
+            , (object->isFading ? (float)object->decay / asset->prt_data[object->type].decay  : 1  ));
 
-        if(object->type == PIXEL)
+        if(object->type == JET)
+        {
+            al_draw_tinted_scaled_rotated_bitmap(object->bitmap,color,23,23,
+            asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x * base_scale,asset->scale_factor *object->scale_y * base_scale,
+            object->curr.turn_angle,object->flip_img
+            );
+            
+        }
+        else if(object->type == PIXEL)
         {
             al_draw_filled_rectangle(asset->scale_factor * (object->curr.x - reference->curr.x -object->scale_x/2.) +window_width/2,
             asset->scale_factor * (object->curr.y - reference->curr.y -object->scale_y/2.) + window_height/2,
@@ -357,17 +368,17 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 
 
 
-                al_draw_tinted_scaled_rotated_bitmap_region(asset->prt_texture[object->type],which_region*48,0,48,48,color,24,24,
+                al_draw_tinted_scaled_rotated_bitmap_region(object->bitmap,which_region*48,0,48,48,color,24,24,
                 asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,
-                asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
+                asset->scale_factor *object->scale_x * base_scale,asset->scale_factor *object->scale_y * base_scale,
                 object->curr.turn_angle,object->flip_img
                 );
                 
             }
             else
             {
-                al_draw_tinted_scaled_rotated_bitmap(asset->prt_texture[object->type],color,23,23,
-            asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x,asset->scale_factor *object->scale_y,
+                al_draw_tinted_scaled_rotated_bitmap(object->bitmap,color,23,23,
+            asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x*base_scale,asset->scale_factor *object->scale_y*base_scale,
             object->curr.turn_angle,object->flip_img
             );
 
@@ -382,6 +393,75 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blend
 
 
 }
+
+
+
+void draw_radar(asset_data * asset, std::vector<JetInst>::iterator reference ,  RadarInst * radar, float x, float y, float angle, ALLEGRO_COLOR bkgr_color)
+{
+
+    ALLEGRO_COLOR indicator;
+    if(reference->type == MIG21) indicator = al_map_rgb(240,240,0);
+    else indicator = al_map_rgb(0,240,0);
+    float rad_pointer = angle_addition(angle,radar->turn_angle);
+
+
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+    al_draw_filled_pieslice(x,y,48 * asset->config.UIscale,angle+fabs(radar->range_rad),-fabs(2*radar->range_rad),bkgr_color);
+
+    if(radar->mode == 2)
+    {
+    if(reference->botTarget != -1) al_draw_filled_circle(x + 30 * cos(angle-fabs(radar->range_rad) - 0.12), y + 30 * sin(angle-fabs(radar->range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
+    al_draw_circle(x + 30 * cos(angle-fabs(radar->range_rad) - 0.12), y + 30 * sin(angle-fabs(radar->range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
+
+    }
+
+    for(std::vector<RadarNode>::iterator object = radar->node_q.begin(); object != radar->node_q.end(); object++)
+    {
+        float node_pointer = angle_addition(angle,object->rad_dist);
+        float x_pos = x + cos(node_pointer) * (16 + (48 -2-16)* object->dist / radar->range_dist) * asset->config.UIscale;
+        float y_pos = y +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / radar->range_dist) * asset->config.UIscale;
+        float opacity;
+        
+        switch(radar->mode)
+        {
+            case 0:
+            opacity = 1 - pow(1 - (float) object->decay/48,4);
+            break;
+            case 1:
+            opacity = 1 - pow(1 - (float) object->decay/24,2);
+            break;
+            case 2:
+            opacity = 1 - pow(1 - (float) object->decay/24,2);
+            break;
+        }
+
+
+
+            al_draw_filled_circle(x_pos, y_pos,
+            2* asset->config.UIscale,(
+            object->isTarget ? 
+            al_map_rgba_f(0.98,0.04,0.04,opacity) :
+            al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
+            )
+            );
+            al_draw_circle(x_pos,y_pos,2* asset->config.UIscale - 0.7,al_map_rgba_f(0,0,0,opacity),0.7);
+
+    }
+    al_draw_line(x + 18*cos(angle), y + 18*sin(angle),
+                x + 48*cos(angle) * asset->config.UIscale, y + 48*sin(angle)* asset->config.UIscale,
+                al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
+
+    al_draw_arc(x,y,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / radar->range_dist) * asset->config.UIscale,angle+fabs(radar->range_rad),-fabs(2*radar->range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
+
+    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
+    al_draw_line(x + 18*cos(rad_pointer),y + 18*sin(rad_pointer),
+                x + 48*cos(rad_pointer)* asset->config.UIscale,y + 48*sin(rad_pointer)* asset->config.UIscale,
+                indicator,0.8); //radar seeker line
+
+}
+
+
+
 
 
 
@@ -581,65 +661,8 @@ case 1:
 break;
 case 2:
 {
-ALLEGRO_COLOR indicator;
-if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
-else indicator = al_map_rgb(0,240,0);
-float rad_pointer = angle_addition(player->curr.turn_angle,level->radar.turn_angle);
-
-
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-al_draw_filled_pieslice(window_width/2,window_height/2,48 * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2));
-
-if(level->radar.mode == 2)
-{
-if(player->botTarget != -1) al_draw_filled_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
-al_draw_circle(window_width/2 + 30 * cos(player->curr.turn_angle-fabs(level->radar.range_rad) - 0.12), window_height/2 + 30 * sin(player->curr.turn_angle-fabs(level->radar.range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
-
-}
-
-for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
-{
-    float node_pointer = angle_addition(player->curr.turn_angle,object->rad_dist);
-    float x_pos = window_width/2 + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
-    float y_pos = window_height/2 +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
-    float opacity;
-    
-    switch(level->radar.mode)
-    {
-        case 0:
-        opacity = 1 - pow(1 - (float) object->decay/48,4);
-        break;
-        case 1:
-        opacity = 1 - pow(1 - (float) object->decay/24,2);
-        break;
-        case 2:
-        opacity = 1 - pow(1 - (float) object->decay/24,2);
-        break;
-    }
-
-
-
-        al_draw_filled_circle(x_pos, y_pos,
-        2* asset->config.UIscale,(
-        object->isTarget ? 
-        al_map_rgba_f(0.98,0.04,0.04,opacity) :
-        al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
-        )
-        );
-        al_draw_circle(x_pos,y_pos,2* asset->config.UIscale - 0.7,al_map_rgba_f(0,0,0,opacity),0.7);
-
-}
-al_draw_line(window_width/2 + 18*cos(player->curr.turn_angle), window_height/2 + 18*sin(player->curr.turn_angle),
-            window_width/2 + 48*cos(player->curr.turn_angle) * asset->config.UIscale, window_height/2 + 48*sin(player->curr.turn_angle)* asset->config.UIscale,
-            al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
-
-al_draw_arc(window_width/2,window_height/2,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,player->curr.turn_angle+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
-
-al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-al_draw_line(window_width/2 + 18*cos(rad_pointer),window_height/2 + 18*sin(rad_pointer),
-            window_width/2 + 48*cos(rad_pointer)* asset->config.UIscale,window_height/2 + 48*sin(rad_pointer)* asset->config.UIscale,
-            indicator,0.8); //radar seeker line
-
+ALLEGRO_COLOR indicator = (player->type == MIG21 ? al_map_rgba(240,240,0,51) : al_map_rgba(0,240,0,51));
+draw_radar(asset,player,&level->radar,window_width/2,window_height/2,player->curr.turn_angle,indicator);
 }
 break;
 }
@@ -647,67 +670,7 @@ break;
 
 if(asset->config.additionalRadar)
 {
-	float radar_x_offset = window_width / 6;
-	float radar_y_offset = window_height/2;
-
-    ALLEGRO_COLOR indicator;
-    if(player->type == MIG21) indicator = al_map_rgb(240,240,0);
-    else indicator = al_map_rgb(0,240,0);
-    float rad_pointer = angle_addition(-PI/2,level->radar.turn_angle);
-
-
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-    al_draw_filled_pieslice(radar_x_offset,radar_y_offset,48 * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f( 0.2,0.2,0.2,0.7));
-
-    if(level->radar.mode == 2)
-    {
-    if(player->botTarget != -1) al_draw_filled_circle(radar_x_offset + 30 * cos(-PI/2-fabs(level->radar.range_rad) - 0.12), radar_y_offset + 30 * sin(-PI/2-fabs(level->radar.range_rad)- 0.12),4,al_map_rgba(120,0,0,122));
-    al_draw_circle(radar_x_offset + 30 * cos(-PI/2-fabs(level->radar.range_rad) - 0.12), radar_y_offset + 30 * sin(-PI/2-fabs(level->radar.range_rad)- 0.12),4,al_map_rgb(0,0,0), 1 );
-
-    }
-
-    for(std::vector<RadarNode>::iterator object = level->radar.node_q.begin(); object != level->radar.node_q.end(); object++)
-    {
-        float node_pointer = angle_addition(-PI/2,object->rad_dist);
-        float x_pos = radar_x_offset + cos(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
-        float y_pos = radar_y_offset +  sin(node_pointer) * (16 + (48 -2-16)* object->dist / level->radar.range_dist) * asset->config.UIscale;
-        float opacity;
-        
-        switch(level->radar.mode)
-        {
-            case 0:
-            opacity = 1 - pow(1 - (float) object->decay/48,4);
-            break;
-            case 1:
-            opacity = 1 - pow(1 - (float) object->decay/24,2);
-            break;
-            case 2:
-            opacity = 1 - pow(1 - (float) object->decay/24,2);
-            break;
-        }
-
-
-
-            al_draw_filled_circle(x_pos, y_pos,
-            2* asset->config.UIscale,(
-            object->isTarget ? 
-            al_map_rgba_f(0.98,0.04,0.04,opacity) :
-            al_map_rgba_f(  indicator.r, indicator.g, indicator.b, opacity )
-            )
-            );
-            al_draw_circle(x_pos,y_pos,2* asset->config.UIscale - 0.7,al_map_rgba_f(0,0,0,opacity),0.7);
-
-    }
-    al_draw_line(radar_x_offset + 18*cos(-PI/2), radar_y_offset + 18*sin(-PI/2),
-                radar_x_offset + 48*cos(-PI/2) * asset->config.UIscale, radar_y_offset + 48*sin(-PI/2)* asset->config.UIscale,
-                al_map_rgba_f(indicator.r, indicator.g, indicator.b, 0.25),0.8); //lead angle line
-
-    al_draw_arc(radar_x_offset,radar_y_offset,  (16 +  30 *(asset->config.fadeDistance + asset->config.fadingLength) / level->radar.range_dist) * asset->config.UIscale,-PI/2+fabs(level->radar.range_rad),-fabs(2*level->radar.range_rad),al_map_rgba_f(  indicator.r, indicator.g, indicator.b,0.2),0.8); //render distance radar arc reference
-
-    al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
-    al_draw_line(radar_x_offset + 18*cos(rad_pointer),radar_y_offset + 18*sin(rad_pointer),
-                radar_x_offset + 48*cos(rad_pointer)* asset->config.UIscale,radar_y_offset + 48*sin(rad_pointer)* asset->config.UIscale,
-                indicator,0.8); //radar seeker line
+draw_radar(asset,player,&level->radar,window_width / 6,window_height/2,-PI/2,al_map_rgba_f( 0.2,0.2,0.2,0.7));
 
 }
 

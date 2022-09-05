@@ -3,6 +3,7 @@
 #include "main.h"
 #include "load_level.h"
 #include "select_level.h"
+#include "render_level.h"
 
 #include <libconfig.h++>
 using namespace libconfig;
@@ -152,6 +153,9 @@ if(!al_init_primitives_addon()) return 0;
 if(!al_install_keyboard()) return 0;
 if(!al_install_mouse()) return 0;
 if(!al_init_ttf_addon()) return 0;
+if(!al_install_audio()) return 0;
+if (!al_init_acodec_addon()) return 0;
+al_reserve_samples(30);
 return 1;
 }
 
@@ -186,6 +190,10 @@ void texture_init(struct asset_data * lvl, bool load)
 
         //ui
     lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
+
+    lvl->sound[0] = al_load_sample("sound/gunshot_shvak.ogg");
+    lvl->sound[1] = al_load_sample("sound/gunshot_gatling.ogg");
+    
     }
     else
     {
@@ -208,7 +216,8 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->prt_texture[EXPLOSION]);
         al_destroy_bitmap(lvl->prt_texture[EXPLOSION_AIRBURST]);
         al_destroy_bitmap(lvl->ui_texture[0]);
-
+        al_destroy_sample(lvl->sound[0]);
+        al_destroy_sample(lvl->sound[1]);
     }
 
 
@@ -216,7 +225,7 @@ void texture_init(struct asset_data * lvl, bool load)
 
 void particle_init(struct asset_data * asset)
 {
-    asset->prt_data[FLARE] = {.decay = 90, .anim = {.isAnimated = false}};
+    asset->prt_data[FLARE] = {.decay = 90, .anim = {.isAnimated = false,0,0}};
 
 
     asset->prt_data[EXPLOSION] = {
@@ -227,6 +236,14 @@ void particle_init(struct asset_data * asset)
         .decay = 35-1, //extract one because it would go off-chart
         .anim = {.isAnimated = true, .animationClock = 7, .textureCount = 5},
         };
+    asset->prt_data[JET] = {
+        .decay = 180,
+        .anim = {.isAnimated = false, 0,0}
+    };
+    asset->prt_data[PIXEL] = {
+        .decay = 60,
+        .anim = {.isAnimated = false, 0,0}
+    };
 
 
 }

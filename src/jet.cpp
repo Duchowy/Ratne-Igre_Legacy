@@ -1,6 +1,7 @@
 #include "jet.h"
 #include "level.h"
 #include "main.h"
+#include "movement.h"
 
 
 
@@ -29,7 +30,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
         object.alter->acceleratable = 1;
         object.alter->rotatable = 1;
         object.alter->target_angle = object.curr.turn_angle;
-        object.alter->speed_mode = 2;
+        object.alter->target_speed = gun->projectile->alter_limit.speed_limit[1];
         object.alter->turn_speed = 0;
         if(!gun->projectile->trait.DMGfall && object.target >= 0 && object.type == RAD_M)  object.decay +=50;
     }
@@ -52,14 +53,27 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
         {
             if(object->weapon[i].ammo && object->weapon[i].magazine && object->weapon[i].engaged && !object->weapon[i].cooldown)
             {
-                ProjInst shell = spawn_projectile(object->weapon[i].launcher->projectile - asset->proj_data,object->weapon[i].launcher,&object->curr,object->botTarget);
+                unsigned short proj_type = object->weapon[i].launcher->projectile - asset->proj_data;
+
+                ProjInst shell = spawn_projectile(proj_type,object->weapon[i].launcher,&object->curr,object->botTarget);
                 if(shell.type >= ENUM_BULLET_TYPE_FIN)
                 {
                     shell.isBotLaunched = object->isBot;
                 }
                 else
                 {
+                    ALLEGRO_SAMPLE * sound = nullptr;
+                    switch(object->weapon[i].type)
+                    {
+                        case SHVAK: sound = asset->sound[0]; break;
+                        case GATLING: sound = asset->sound[1]; break;
+                    }
+
+
                     shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;
+                    al_play_sample(sound,1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
+
+
                 }
                 shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
                 shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
@@ -70,6 +84,10 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                 object->weapon[i].magazine -=1;
                 object->weapon[i].cooldown = object->weapon[i].launcher->cooldown;
                 object->weapon[i].replenish_cooldown = object->weapon[i].launcher->replenish_cooldown;
+                if(asset->laun_data[object->weapon[i].type].recoil)
+                {
+                    accelerate(&object->curr, &object->alter, (object->overwrite_limit ? object->overwrite_limit : &asset->jet_data[object->type].alter_limit   ),asset->laun_data[object->weapon[i].type].recoil);
+                }
             }
 
 
@@ -194,7 +212,7 @@ switch(object->mode)
 {
     case PATROL:
     {
-        object->alter.speed_mode = AIRBRAKE;
+        object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[0];
         if(object->at_work)
         {
             if(object->curr.turn_angle == object->alter.target_angle) object->at_work = 0;
@@ -237,7 +255,7 @@ switch(object->mode)
         }
         
         
-        object->alter.speed_mode = AFTERBURNER;
+        object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[1];
     }
     break;
     case DOGFIGHT:
@@ -247,19 +265,19 @@ switch(object->mode)
         if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
         if(fabs(rad_dist) > PI/2)
         {
-            if(object->curr.speed > player->curr.speed) object->alter.speed_mode = AFTERBURNER;
-            else object->alter.speed_mode = STANDARD;
+            if(object->curr.speed > player->curr.speed) object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[1];
+            else object->alter.target_speed = asset->jet_data[object->type].alter_limit.default_speed;
         }
         else 
         {
-            if(object->curr.speed < player->curr.speed) object->alter.speed_mode = AIRBRAKE;
-            else object->alter.speed_mode = STANDARD;
+            if(object->curr.speed < player->curr.speed) object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[0];
+            else object->alter.target_speed = asset->jet_data[object->type].alter_limit.default_speed;
         }
     }
     break;
     case RETREAT:
     {
-    object->alter.speed_mode = AFTERBURNER;
+    object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[1];
     std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,object->botTarget);
     object->alter.target_angle = getTargetAngle(&object->curr,&follow_target->curr,8);
     }
@@ -503,8 +521,8 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
                     .speed = asset->jet_data[selected->player_jet].alter_limit.default_speed},
         .alter = {
                 .turn_speed = 0.,
-                .speed_mode = STANDARD,
                 .target_angle = (bot ? ( rand()%2 ?  (float)rand()/RAND_MAX *1.5 + PI/2  : (float) rand()/RAND_MAX *(-1.5) - PI/2  )    :  0.0     ),
+                .target_speed = asset->jet_data[selected->player_jet].alter_limit.default_speed,
                 .rotatable = true,
                 .acceleratable = true
         },
@@ -606,6 +624,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 14,
     .ammo = 180,
     .magazine = 25,
+    .recoil = -0.06,
     .spread = 0.05,
     .projectile = asset->proj_data + SLUG
 },
@@ -617,6 +636,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 16,
     .ammo = 240,
     .magazine = 40,
+    .recoil = -0.05,
     .spread = 0.075,
     .projectile = asset->proj_data + SLUG
 },
@@ -628,6 +648,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 18,
     .ammo = 400,
     .magazine = 180,
+    .recoil = -0.04,
     .spread = 0.03,
     .projectile = asset->proj_data + SLUG
 },
@@ -639,6 +660,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 120,
     .ammo = 14,
     .magazine = 2,
+    .recoil = 0.,
     .spread = 0.03,
     .projectile = asset->proj_data + IR_M
 },
@@ -650,6 +672,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 120,
     .ammo = 10,
     .magazine = 1,
+    .recoil = 0.,
     .spread = 0.03,
     .projectile = asset->proj_data + RAD_M
 },
@@ -661,6 +684,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 30,
     .ammo = 30,
     .magazine = 4,
+    .recoil = -0.25,
     .spread = 0.05,
     .projectile = asset->proj_data + AIRBURST
 },
@@ -687,7 +711,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
         .damage = 20,
         .velocity = 2,
         .alter_limit = {
-            .alter = {.turn_speed = 0,.speed_mode = 1,.rotatable = 0, .acceleratable = 0},
+            .alter = {.turn_speed = 0,.rotatable = 0, .acceleratable = 0},
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
         .radius = 0,
@@ -699,7 +723,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
         .damage = 40,
         .velocity = 2,
         .alter_limit = {
-            .alter = {.turn_speed = 0,.speed_mode = 1,.rotatable = 0, .acceleratable = 0},
+            .alter = {.turn_speed = 0,.rotatable = 0, .acceleratable = 0},
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
         .radius = 20,
@@ -711,7 +735,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
         .damage = 100,
         .velocity = 0,
         .alter_limit = {
-            .alter = {.turn_speed = 0.025,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
+            .alter = {.turn_speed = 0.025,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.005,.speed_rate = {0,0.2},.speed_limit = {0,6.5},1
             },
         .radius = 7,
@@ -723,7 +747,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
         .damage = 100,
         .velocity = 0,
         .alter_limit = {
-            .alter = {.turn_speed = 0.03,.speed_mode = 2,.rotatable = 1, .acceleratable = 1},
+            .alter = {.turn_speed = 0.03,.rotatable = 1, .acceleratable = 1},
             .turn_rate = 0.006,.speed_rate = {0,0.2},.speed_limit = {0,5.5},1
             },
         .radius = 7,

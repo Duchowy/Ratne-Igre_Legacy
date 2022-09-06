@@ -48,6 +48,7 @@ struct
     bool hitCircular; //if 0, in a 60 deg cone
     bool isAOE;
     bool DMGfall;
+    bool isCountable;
 } trait;
 };
 
@@ -62,6 +63,8 @@ unsigned short ammo;
 unsigned short magazine;
 float recoil;
 float spread;
+unsigned short multishot; //does nothing atm
+bool wingMounted;
 struct Projectile * projectile;
 };
 

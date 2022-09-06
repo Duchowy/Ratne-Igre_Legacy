@@ -47,52 +47,70 @@ return object;
 
 void shoot(struct LevelInst * level, struct asset_data * asset)
 {
+    #pragma omp parallel for
     for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object != level->jet_q.end(); object++)
     {
-        for(int i = 0; i<3; i++)
+        for(int i = 0; i<3; i++) //weapon iteration
         {
-            if(object->weapon[i].ammo && object->weapon[i].magazine && object->weapon[i].engaged && !object->weapon[i].cooldown)
+
+
+
+            if(object->weapon[i].engaged && !object->weapon[i].cooldown)
             {
-                unsigned short proj_type = object->weapon[i].launcher->projectile - asset->proj_data;
+                int n = 0;
+                for(n; n< object->weapon[i].launcher->multishot && object->weapon[i].ammo && object->weapon[i].magazine; n++)
+                {
+                        unsigned short proj_type = object->weapon[i].launcher->projectile - asset->proj_data;
 
-                ProjInst shell = spawn_projectile(proj_type,object->weapon[i].launcher,&object->curr,object->botTarget);
-                
-                
-                if(shell.type >= ENUM_BULLET_TYPE_FIN) //missile
-                {
-                    shell.isBotLaunched = object->isBot;
-                    al_play_sample(asset->sound[3],1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
+                        ProjInst shell = spawn_projectile(proj_type,object->weapon[i].launcher,&object->curr,object->botTarget);
+                        
+                        if(asset->laun_data[object->weapon[i].type].wingMounted)
+                        {
+                            bool GenerateLeft = object->weapon[i].ammo%2;
+                            transform(&shell.curr,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height, 2.f + (float) rand()/RAND_MAX * 2.f, angle_addition(shell.curr.turn_angle,(GenerateLeft ?  -PI/2  :  PI/2  )));
+                        }
+                        #pragma omp critical
+                        {
+                            if(shell.type >= ENUM_BULLET_TYPE_FIN) //missile
+                            {
+                                shell.isBotLaunched = object->isBot;
+                                al_play_sample(asset->sound[3],1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
+                            }
+                            else
+                            {
+                                ALLEGRO_SAMPLE * sound = nullptr;
+                                switch(object->weapon[i].type)
+                                {
+                                    case SHVAK: sound = asset->sound[0]; break;
+                                    case ADEN: sound = asset->sound[1]; break;
+                                    case GATLING: sound = asset->sound[2]; break;
+                                }
+                                al_play_sample(sound,1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
+
+
+                            }
+                        }
+                        shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
+                        shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
+                        shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;
+                        #pragma omp critical
+                        level->proj_q.push_back(shell);
+                        object->weapon[i].ammo-=1;
+                        object->weapon[i].magazine -=1;
+                    
                 }
-                else
+                if(n)
                 {
-                    ALLEGRO_SAMPLE * sound = nullptr;
-                    switch(object->weapon[i].type)
+                    object->weapon[i].cooldown = object->weapon[i].launcher->cooldown; //apply once
+                    object->weapon[i].replenish_cooldown = object->weapon[i].launcher->replenish_cooldown; //apply once
+                    if(asset->laun_data[object->weapon[i].type].recoil) //apply once
                     {
-                        case SHVAK: sound = asset->sound[0]; break;
-                        case ADEN: sound = asset->sound[1]; break;
-                        case GATLING: sound = asset->sound[2]; break;
+                        accelerate(&object->curr, &object->alter, (object->overwrite_limit ? object->overwrite_limit : &asset->jet_data[object->type].alter_limit   ),asset->laun_data[object->weapon[i].type].recoil);
                     }
-
-
-                    shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;
-                    al_play_sample(sound,1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
-
-
                 }
-                shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
-                shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
 
-
-                level->proj_q.push_back(shell);
-                object->weapon[i].ammo-=1;
-                object->weapon[i].magazine -=1;
-                object->weapon[i].cooldown = object->weapon[i].launcher->cooldown;
-                object->weapon[i].replenish_cooldown = object->weapon[i].launcher->replenish_cooldown;
-                if(asset->laun_data[object->weapon[i].type].recoil)
-                {
-                    accelerate(&object->curr, &object->alter, (object->overwrite_limit ? object->overwrite_limit : &asset->jet_data[object->type].alter_limit   ),asset->laun_data[object->weapon[i].type].recoil);
-                }
             }
+
 
 
         }
@@ -494,12 +512,13 @@ if(input_vec.size() > 2)
 
 }
 
-LaunInst launcher_spawn(Jet * jet, Launcher * launcher, unsigned short type, unsigned short slot)
+LaunInst launcher_spawn( Launcher * launcher, unsigned short type, float multiplier)
 {
 LaunInst object {
 .engaged = 0,
+.multiplier = multiplier,
 .type = type,
-.ammo = jet->weapon_mult[slot] * launcher->ammo,
+.ammo = multiplier * launcher->ammo,
 .magazine = launcher->magazine,
 .cooldown = 0,
 .replenish_cooldown = 0,
@@ -539,7 +558,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         .overwrite_limit = (overwrite ? overwrite : nullptr)
     };
 
-    for(int i = 0; i<3; i++) object.weapon[i] = launcher_spawn(&asset->jet_data[selected->player_jet],&asset->laun_data[selected->weapon[i]],selected->weapon[i],i);
+    for(int i = 0; i<3; i++) object.weapon[i] = launcher_spawn(&asset->laun_data[selected->weapon[i]],selected->weapon[i],asset->jet_data[selected->player_jet].weapon_mult[i] * selected->multiplier[i]);
     return object;
 }
 
@@ -554,12 +573,12 @@ for(int i = 0; i<ENUM_BOSS_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level
 float x = (float) map_width*0.8, y = (float) map_height/(enemy_amount+1);
 
 struct selection templat[ENUM_BOSS_TYPE_FIN] = {
-{.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK} },
+{.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3} },
 {.player_jet = F4, .weapon= {GATLING,RADAR,FLAK}},
-{.player_jet = F104, .weapon= {GATLING,INFRARED,FLAK}},
-{.player_jet = HARRIER, .weapon= {ADEN,INFRARED,FLAK}},
-{.player_jet = MIG29, .weapon= {SHVAK,RADAR,FLAK}},
-{.player_jet = SR91, .weapon= {GATLING,RADAR,FLAK}}
+{.player_jet = F104, .weapon= {GATLING,INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3}},
+{.player_jet = HARRIER, .weapon= {ADEN,INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3}},
+{.player_jet = MIG29, .weapon= {SHVAK,RADAR,FLAK}, .multiplier = {0.7,0.7,0.3}},
+{.player_jet = SR91, .weapon= {GATLING,RADAR,FLAK}, .multiplier = {0.7,0.7,0.3}}
 };
 
 
@@ -630,6 +649,8 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .magazine = 25,
     .recoil = -0.06,
     .spread = 0.05,
+    .multishot = 1,
+    .wingMounted = false,
     .projectile = asset->proj_data + SLUG
 },
 { //ADEN
@@ -642,6 +663,8 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .magazine = 40,
     .recoil = -0.05,
     .spread = 0.075,
+    .multishot = 2,
+    .wingMounted = false,
     .projectile = asset->proj_data + SLUG
 },
 { //GATLING
@@ -654,18 +677,22 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .magazine = 180,
     .recoil = -0.03,
     .spread = 0.03,
+    .multishot = 1,
+    .wingMounted = false,
     .projectile = asset->proj_data + SLUG
 },
 { //Infrared
     .decay = 30,
     .damage = 0,
     .velocity = 0,
-    .cooldown = 60,
+    .cooldown = 40,
     .replenish_cooldown = 120,
     .ammo = 14,
     .magazine = 2,
     .recoil = 0.,
     .spread = 0.03,
+    .multishot = 1,
+    .wingMounted = true,
     .projectile = asset->proj_data + IR_M
 },
 { //Radar
@@ -678,6 +705,8 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .magazine = 1,
     .recoil = 0.,
     .spread = 0.03,
+    .multishot = 1,
+    .wingMounted = true,
     .projectile = asset->proj_data + RAD_M
 },
 { //FLAK
@@ -690,7 +719,23 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .magazine = 4,
     .recoil = -0.25,
     .spread = 0.05,
+    .multishot = 1,
+    .wingMounted = false,
     .projectile = asset->proj_data + AIRBURST
+},
+{ //Zuni
+    .decay = 30,
+    .damage = 0,
+    .velocity = 0,
+    .cooldown = 8,
+    .replenish_cooldown = 12,
+    .ammo = 32,
+    .magazine = 24,
+    .recoil = 0.,
+    .spread = 0.08,
+    .multishot = 2,
+    .wingMounted = true,
+    .projectile = asset->proj_data + UNGUIDED
 },
 
 
@@ -720,7 +765,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 0,
         .activation_radius = 0,
-        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1},
+        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1, .isCountable = false},
     },
     { //airburst
         .decay = 60,
@@ -732,7 +777,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 20,
         .activation_radius = 8,
-        .trait = {.targeting_angle = 0, .draw_width = 1.2, .draw_height = 0.7, .hitCircular = 0, .isAOE = 1, .DMGfall = 0},
+        .trait = {.targeting_angle = 0, .draw_width = 1.2, .draw_height = 0.7, .hitCircular = 0, .isAOE = 1, .DMGfall = 0,.isCountable = false},
     },
     { //infrared
         .decay = 100,
@@ -744,7 +789,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 7,
         .activation_radius = 3,
-        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
+        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = true},
     },
     { //radar
         .decay = 150,
@@ -756,7 +801,19 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 7,
         .activation_radius = 3,
-        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0},
+        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = true},
+    },
+    { //zuni
+        .decay = 100,
+        .damage = 90,
+        .velocity = 0,
+        .alter_limit = {
+            .alter = {.turn_speed = 0.f,.rotatable = 0, .acceleratable = 1},
+            .turn_rate = 0.f,.speed_rate = {0,0.1},.speed_limit = {0,5.5}, .mobility_coef = 1.f
+            },
+        .radius = 7,
+        .activation_radius = 3,
+        .trait = {.targeting_angle = 0.f, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = false},
     },
 
 

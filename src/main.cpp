@@ -105,7 +105,7 @@ bool kill = 0;
 
 
 texture_init(assets,1);
-struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}}, .custom_stat = {nullptr,nullptr,nullptr,nullptr}}};
+struct LevelInst lvl = {.level_name = ENUM_LVL_TYPE_FIN, .player = {.choice = {.player_jet = 0, .weapon = {0, ENUM_GUN_TYPE_FIN, ENUM_MSL_TYPE_FIN}, .multiplier = {1.0f,1.0f,0.0f}}, .custom_stat = {nullptr,nullptr,nullptr,nullptr}}};
 for(int i = 0; i< ENUM_JET_TYPE_FIN; i++) lvl.player.mod[i].engaged = false;
 
 jet_init(assets);
@@ -174,6 +174,7 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->proj_texture[AIRBURST] = al_load_bitmap("texture/bullet/airburst.png");
     lvl->proj_texture[IR_M] = al_load_bitmap("texture/missile/infrared.png");
     lvl->proj_texture[RAD_M] = al_load_bitmap("texture/missile/radar.png");
+    lvl->proj_texture[UNGUIDED] = al_load_bitmap("texture/missile/unguided.png");
 
         //jet
     lvl->jet_texture[MIG21] = al_load_bitmap("texture/jet/mig21.png");
@@ -207,6 +208,8 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->proj_texture[AIRBURST]);
         al_destroy_bitmap(lvl->proj_texture[IR_M]);
         al_destroy_bitmap(lvl->proj_texture[RAD_M]);
+        al_destroy_bitmap(lvl->proj_texture[UNGUIDED]);
+
         al_destroy_bitmap(lvl->jet_texture[MIG21]);
         al_destroy_bitmap(lvl->jet_texture[F4]);
         al_destroy_bitmap(lvl->jet_texture[F104]);

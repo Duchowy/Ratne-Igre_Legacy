@@ -53,7 +53,7 @@ return -1;
 
 
 
-void map_button(std::array<box_string, 4> & button,struct selection * choice)
+void map_button(std::array<box_string, 5> & button,struct selection * choice)
 {
 
 switch(choice->player_jet)
@@ -73,6 +73,7 @@ switch(choice->weapon[i-1])
             case INFRARED: button[i].name = "INFRARED"; button[i].desc = "+Fast\n-Heat guided"; break;
             case RADAR: button[i].name = "RADAR"; button[i].desc = "+Lock from all angles\n-Poor range"; break;
             case FLAK:button[i].name = "FLAK"; button[i].desc = "+High damage\n+AOE damage\n-Slow firerate\n-Low ammo"; break;
+            case ZUNI:button[i].name = "ZUNI"; button[i].desc = "+High damage\n+AOE damage\n+Fast firerate\n-Hard to aim"; break;
         }
 
 
@@ -82,16 +83,21 @@ switch(choice->weapon[i-1])
 
 }
 
-void update_button_pos(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,  allegro5_data* alleg5)
+void update_button_pos(std::array<box_string, 5> & button,std::array<box_string, 2> & button_click,  allegro5_data* alleg5)
 {
-for(int i = 0; i<4; i++)
+for(int i = 0; i<5; i++) //item selection
 {
-//button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
 button[i].x = (float) al_get_display_width(alleg5->display)/2 + 250*i - 375;
 
 button[i].y = al_get_display_height(alleg5->display) * 7/10;
 
 }
+
+//msl and spc ratio
+button[4].x = (button[3].x + button[2].x)/2;
+
+
+
 
 button_click[0].x = button_click[0].width/2 + 30;
 button_click[0].y = al_get_display_height(alleg5->display) - button_click[0].height/2 - 30;
@@ -106,13 +112,13 @@ button_click[1].y = al_get_display_height(alleg5->display) - button_click[1].hei
 
 
 
-void update(std::array<box_string, 4> & button,struct selection * choice,ALLEGRO_MOUSE_STATE *mouse)
+void update(std::array<box_string, 5> & button,struct selection * choice,ALLEGRO_MOUSE_STATE *mouse)
 {
 short number= -1;
 
 
 int decision = al_get_mouse_state_axis(mouse, 2);
-for(int i = 0; i<4 && number ==-1; i++)
+for(int i = 0; i<5 && number ==-1; i++)
     {
     if(   (button[i].x - button[i].width/2 < mouse->x && mouse->x < button[i].x + button[i].width/2) && (button[i].y - button[i].height/2 < mouse->y && mouse->y < button[i].y + button[i].height/2)) number = i;
     }
@@ -142,7 +148,13 @@ switch(number)
         if(decision < 0 ) choice->weapon[number-1] = (choice->weapon[number-1] > ENUM_MSL_TYPE_FIN ? choice->weapon[number-1]-1 : ENUM_MSL_TYPE_FIN);
     }
     break;
-    
+    case 4:
+    {
+        if(decision > 0 ) choice->multiplier[1] = (choice->multiplier[1] < 1.0f ? choice->multiplier[1] + 0.1f : 1.0f);
+        if(decision < 0 ) choice->multiplier[1] = (choice->multiplier[1]-0.1f > 0.f ? choice->multiplier[1]-0.1f : 0.0f);
+        choice->multiplier[2] = 1.0f - choice->multiplier[1];
+    }
+    break;
     default:
     break;
     
@@ -150,7 +162,7 @@ switch(number)
 al_set_mouse_z(0); //zero the scroll
 }
 
-void draw(std::array<box_string, 4> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, graph_data * primary, graph_data * secondary )
+void draw(std::array<box_string, 5> & button,std::array<box_string, 2> & button_click,struct asset_data * assets,allegro5_data* alleg5, struct Player_Data * player, graph_data * primary, graph_data * secondary )
 {
 
 /*########
@@ -167,6 +179,15 @@ al_draw_multiline_text(alleg5->font,al_map_rgb(240,240,240),button[i].x,button[i
 }
 al_draw_scaled_rotated_bitmap(assets->jet_texture[player->choice.player_jet],al_get_bitmap_width(assets->jet_texture[player->choice.player_jet])/2,al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])/2,
 button[0].x,button[0].y-button[0].height/2-al_get_bitmap_height(assets->jet_texture[player->choice.player_jet])-50,2,2,0,0);
+
+
+//scrolling rectangle
+al_draw_filled_rectangle(button[4].x - button[4].width/2,button[4].y - button[4].height/2,button[4].x + button[4].width/2,button[4].y + button[4].height/2,
+al_map_rgb(0,20,20));
+
+al_draw_filled_rectangle(button[4].x - button[4].width/2, button[4].y + button[4].height/2, button[4].x, button[4].y + button[4].height/2 - player->choice.multiplier[1] * button[4].height,al_map_rgb(200,180,100));
+al_draw_filled_rectangle(button[4].x, button[4].y + button[4].height/2, button[4].x + button[4].width/2, button[4].y + button[4].height/2 - player->choice.multiplier[2] * button[4].height,al_map_rgb(250,250,250));
+
 
 /*########
 # BUTTON #
@@ -252,7 +273,7 @@ al_draw_textf(alleg5->font,color_override,button[0].x ,button[0].y-graph_pos_y-2
 
 int eq_select(struct LevelInst * lvl,struct asset_data * assets, allegro5_data* alleg5)
 {
-std::array<box_string, 4> button = {{{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90}}};
+std::array<box_string, 5> button = {{{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 190, .height = 90},{.width = 20, .height = 90}}};
 std::array<box_string, 2> button_click = {{{.width = 190, .height = 90, .name = "<- MAP"},{.width = 190, .height = 90, .name = "MISSION ->"}}};
 
 

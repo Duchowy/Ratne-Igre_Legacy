@@ -517,13 +517,13 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
 ## AMMO ##
 ########*/
 {
-    bool SPCisGun = (player->weapon[2].launcher->projectile - asset->proj_data < ENUM_BULLET_TYPE_FIN)  ;
+    bool SPCisGun = !( asset->proj_data[player->weapon[2].launcher->projectile - asset->proj_data].trait.isCountable)  ;
 
 
     al_draw_filled_rectangle(0,window_height,(al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5) * asset->config.UIscale
     ,window_height- 20 * asset->config.UIscale,al_map_rgb(0,20,20));                                                 //font theme
 
-    float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo * asset->jet_data[player->type].weapon_mult[0]);
+    float ammo_percentage = (float) player->weapon[0].ammo / (asset->laun_data[player->weapon[0].type].ammo *  player->weapon[0].multiplier);
     float mag_percentage = (float) player->weapon[0].magazine / player->weapon[0].launcher->magazine;
     ALLEGRO_COLOR ammo_color;
     int rectangle_height = 60;
@@ -567,7 +567,7 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
 
     if(SPCisGun)
     {
-        float ammo_percentage = (float) player->weapon[2].ammo / (asset->laun_data[player->weapon[2].type].ammo * asset->jet_data[player->type].weapon_mult[2]);
+        float ammo_percentage = (float) player->weapon[2].ammo / (asset->laun_data[player->weapon[2].type].ammo * player->weapon[2].multiplier);
         float mag_percentage = (float) player->weapon[2].magazine / player->weapon[2].launcher->magazine;
         ALLEGRO_COLOR ammo_color = (ammo_percentage > 0.4 ? al_map_rgb(240,240,240) : al_map_rgb_f(0.98,pow((ammo_percentage/0.4)*0.98,3),pow((ammo_percentage/0.4)*0.98,3)) );;
         if(mag_percentage <= 0.4)

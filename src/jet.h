@@ -83,6 +83,7 @@ struct ProjInst
 struct LaunInst
 {
     bool engaged;
+    float multiplier;
     unsigned short type;
     unsigned short ammo;
     unsigned short magazine;
@@ -101,6 +102,7 @@ struct LaunInst
 struct selection{
 unsigned short player_jet;
 unsigned short weapon[3];
+float multiplier[3];
 };
 
 

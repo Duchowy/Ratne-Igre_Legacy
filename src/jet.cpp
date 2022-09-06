@@ -56,9 +56,12 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                 unsigned short proj_type = object->weapon[i].launcher->projectile - asset->proj_data;
 
                 ProjInst shell = spawn_projectile(proj_type,object->weapon[i].launcher,&object->curr,object->botTarget);
-                if(shell.type >= ENUM_BULLET_TYPE_FIN)
+                
+                
+                if(shell.type >= ENUM_BULLET_TYPE_FIN) //missile
                 {
                     shell.isBotLaunched = object->isBot;
+                    al_play_sample(asset->sound[3],1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
                 }
                 else
                 {
@@ -66,7 +69,8 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                     switch(object->weapon[i].type)
                     {
                         case SHVAK: sound = asset->sound[0]; break;
-                        case GATLING: sound = asset->sound[1]; break;
+                        case ADEN: sound = asset->sound[1]; break;
+                        case GATLING: sound = asset->sound[2]; break;
                     }
 
 
@@ -648,7 +652,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .replenish_cooldown = 18,
     .ammo = 400,
     .magazine = 180,
-    .recoil = -0.04,
+    .recoil = -0.03,
     .spread = 0.03,
     .projectile = asset->proj_data + SLUG
 },

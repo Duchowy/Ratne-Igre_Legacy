@@ -192,8 +192,9 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
 
     lvl->sound[0] = al_load_sample("sound/gunshot_shvak.ogg");
-    lvl->sound[1] = al_load_sample("sound/gunshot_gatling.ogg");
-    
+    lvl->sound[1] = al_load_sample("sound/gunshot_aden.ogg");
+    lvl->sound[2] = al_load_sample("sound/gunshot_gatling.ogg");
+    lvl->sound[3] = al_load_sample("sound/launch_missile.ogg");
     }
     else
     {
@@ -218,6 +219,8 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->ui_texture[0]);
         al_destroy_sample(lvl->sound[0]);
         al_destroy_sample(lvl->sound[1]);
+        al_destroy_sample(lvl->sound[2]);
+        al_destroy_sample(lvl->sound[3]);
     }
 
 

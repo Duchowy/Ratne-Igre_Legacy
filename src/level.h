@@ -112,7 +112,7 @@ void refresh_riven(struct LevelInst * level,struct asset_data * asset);
 int level(allegro5_data*,asset_data*,LevelInst*);
 float angle_addition(float object, float addition);
 float angle_difference(float current, float target);
-float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target);
+float distance(state * current, state * target );
 float rad_distance(state * current, state * target);
 
 #endif

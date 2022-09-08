@@ -5,6 +5,108 @@
 
 enum OperationMode{SIMPLIFIED,ADVANCED};
 
+
+bool collision(struct LevelInst * input, struct asset_data * asset, std::vector<ProjInst>::iterator shell)
+{
+	bool activated = 0;
+
+    if(!shell->decay || shell->curr.x <= 0 || shell->curr.x >= asset->lvl_data[input->level_name].map_width || shell->curr.y <= 0 || shell->curr.y >= asset->lvl_data[input->level_name].map_height)
+		{
+		activated = 1;
+		}
+    std::vector<JetInst>::iterator activatingTarget = input->jet_q.end();
+    if(!activated && shell->decay + 4 <= asset->proj_data[shell->type].decay + shell->launcher->decay)
+        {
+            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++) 
+            {
+
+                if(
+                (shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) &&
+                (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   ))  &&
+                distance(&shell->curr,&target->curr) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].activation_radius   
+                )
+                {
+                            activated = 1;
+                            activatingTarget = target;
+                            break;
+                }
+            }
+        }
+
+    if(activated)
+    {
+        if(asset->proj_data[shell->type].trait.isAOE)
+        {
+            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
+            {
+                if(
+                    distance(&shell->curr,&target->curr) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius &&
+                    (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   )  )
+                )
+                    {
+                        #pragma omp critical
+                        {
+                            target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
+                            if(  !(rand()%2)) target->status[BURNING] = 180 + rand()%180;
+                        }
+                    }
+            }
+
+            if(asset->config.particlesEnabled)
+            {
+                unsigned int type = (asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST);
+
+                
+                    ParticleInst expl = {.type = type,
+                        .bitmap = asset->prt_texture[type],
+                        .color = nullptr,
+                        .curr = {.x = shell->curr.x, .y = shell->curr.y, .turn_angle = shell->curr.turn_angle, .speed = 0   },
+                        .scale_x = (float) asset->proj_data[shell->type].radius/20,
+                        .scale_y = (float) asset->proj_data[shell->type].radius/20,
+                        .alter = {
+                            .turn_speed = 0.,
+                            .rotatable = false,
+                            .acceleratable = false,
+                        },
+                        .decay = asset->prt_data[(asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST)].decay,
+                        .isFading = false,
+                        .isFalling = false,
+                        .flip_img = 0
+                    };
+                
+                #pragma omp critical
+                {
+                input->prt_q.push_back(expl);
+                }
+
+
+                
+
+
+            }
+        }
+        else
+        {
+            #pragma omp critical
+            {
+                activatingTarget->hp = (activatingTarget->hp - shell->damage > 0 ? activatingTarget->hp - shell->damage : 0);
+                if(  !(rand()%5)) activatingTarget->status[BURNING] = 180 + rand()%180;
+            }
+        }
+
+
+        shell->decay = 0;
+    }
+
+    return activated;
+
+
+
+}
+
+
+
+
 void randomize_position(std::vector<JetInst>::iterator object, asset_data * asset, LevelInst * lvl)
 {
 if(object->ability[RAND_POS].duration)
@@ -79,10 +181,6 @@ void transform(struct state * pos,unsigned int map_width, unsigned int map_heigh
     if(pos->y < 0) pos->y = 0;
     if(pos->y > map_height) pos->y = map_height;
 }
-
-
-
-
 
 
 
@@ -195,9 +293,17 @@ void transform(struct LevelInst * data, struct asset_data * asset)
     #pragma omp parallel for
     for(std::vector<ProjInst>::iterator object = data->proj_q.begin(); object != data->proj_q.end(); object++)
     {
-        move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
+        int num = 1 + asset->config.collisionAccCoef * object->curr.speed / asset->proj_data[object->type].activation_radius;
+        for(int i = 0; i< num; i++)
+        {
+            transform(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,  object->curr.speed / (float)num, object->curr.turn_angle);
+            if(collision(data,asset,object)) break;
+        }
+        //move(&object->curr,asset->lvl_data[data->level_name].map_width,asset->lvl_data[data->level_name].map_height,1);
+        
+        
+        
         if(object->alter) advance(&object->curr,object->alter,&asset->proj_data[object->type].alter_limit,SIMPLIFIED);
-
     }
 
     

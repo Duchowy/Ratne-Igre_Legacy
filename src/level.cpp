@@ -310,122 +310,10 @@ float new_angle = atan2(( target->y - current->y) ,(target->x - current->x));
 return angle_difference(current->turn_angle,new_angle);
 }
 
-/*
-float rad_distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target)
+
+float distance(state * current, state * target )
 {
-float new_angle = atan2(( target->curr.y - current->curr.y) ,(target->curr.x - current->curr.x));
-return angle_difference(current->curr.turn_angle,new_angle);
-}
-*/
-float distance(std::vector<JetInst>::iterator current, std::vector<JetInst>::iterator target) //to be changed to use curr struct
-{
-    return sqrt( pow( target->curr.x - current->curr.x ,2) +  pow(  target->curr.y - current->curr.y ,2));
-}
-
-float distance(std::vector<ProjInst>::iterator shell, std::vector<JetInst>::iterator target)
-{
-    return sqrt( pow( target->curr.x - shell->curr.x ,2) +  pow(  target->curr.y - shell->curr.y ,2));
-}
-
-
-void collision(struct LevelInst * input, struct asset_data * asset)
-{
-
-#pragma omp parallel for
-for(std::vector<ProjInst>::iterator shell = input->proj_q.begin(); shell != input->proj_q.end(); shell++)
-{
-	bool activated = 0;
-
-    if(!shell->decay || shell->curr.x <= 0 || shell->curr.x >= asset->lvl_data[input->level_name].map_width || shell->curr.y <= 0 || shell->curr.y >= asset->lvl_data[input->level_name].map_height)
-		{
-		activated = 1;
-		}
-    std::vector<JetInst>::iterator activatingTarget = input->jet_q.end();
-    if(!activated && shell->decay + 3 <= asset->proj_data[shell->type].decay + shell->launcher->decay)
-        {
-            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++) 
-            {
-
-                if(
-                (shell->type != RAD_M || (shell->type == RAD_M && shell->isBotLaunched != target->isBot)) &&
-                (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   ))  &&
-                distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].activation_radius   
-                )
-                {
-                            activated = 1;
-                            activatingTarget = target;
-                            break;
-                }
-            }
-        }
-
-    if(activated)
-    {
-        if(asset->proj_data[shell->type].trait.isAOE)
-        {
-            for(std::vector<JetInst>::iterator target = input->jet_q.begin(); target != input->jet_q.end(); target++)
-            {
-                if(
-                    distance(shell,target) < asset->jet_data[target->type].hitbox + asset->proj_data[shell->type].radius &&
-                    (asset->proj_data[shell->type].trait.hitCircular || ( fabs(rad_distance(&shell->curr,&target->curr)) < PI/4   )  )
-                )
-                    {
-                        #pragma omp critical
-                        {
-                            target->hp = (target->hp - shell->damage > 0 ? target->hp - shell->damage : 0);
-                        }
-                    }
-            }
-
-            if(asset->config.particlesEnabled)
-            {
-                unsigned int type = (asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST);
-
-                
-                    ParticleInst expl = {.type = type,
-                        .bitmap = asset->prt_texture[type],
-                        .color = nullptr,
-                        .curr = {.x = shell->curr.x, .y = shell->curr.y, .turn_angle = shell->curr.turn_angle, .speed = 0   },
-                        .scale_x = (float) asset->proj_data[shell->type].radius/20,
-                        .scale_y = (float) asset->proj_data[shell->type].radius/20,
-                        .alter = {
-                            .turn_speed = 0.,
-                            .rotatable = false,
-                            .acceleratable = false,
-                        },
-                        .decay = asset->prt_data[(asset->proj_data[shell->type].trait.hitCircular ? EXPLOSION : EXPLOSION_AIRBURST)].decay,
-                        .isFading = false,
-                        .isFalling = false,
-                        .flip_img = 0
-                    };
-                
-                #pragma omp critical
-                {
-                input->prt_q.push_back(expl);
-                }
-
-
-                
-
-
-            }
-        }
-        else
-        {
-            #pragma omp critical
-            {
-                activatingTarget->hp = (activatingTarget->hp - shell->damage > 0 ? activatingTarget->hp - shell->damage : 0);
-            }
-        }
-
-
-        shell->decay = 0;
-    }
-
-    
-}
-
-
+return sqrt( pow( target->x - current->x ,2) +  pow(  target->y - current->y ,2));
 }
 
 
@@ -449,7 +337,7 @@ if(!object->ability[CMEASURE].cooldown || object->ability[CMEASURE].duration)
 {
     for(std::vector<ProjInst>::iterator shell = lvl->proj_q.begin(); shell != lvl->proj_q.end(); shell++)
     {
-        if(shell->type >= ENUM_BULLET_TYPE_FIN && distance(shell,object) < 350 && shell->isBotLaunched != object->isBot)
+        if(shell->type >= ENUM_BULLET_TYPE_FIN && distance(&shell->curr,&object->curr) < 350 && shell->isBotLaunched != object->isBot)
         {
             activated = 1;
             if(!shell->status[MSL_STATUS::CONTROLLED])
@@ -548,6 +436,28 @@ for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != le
 
 }
 
+void execute_status(asset_data * asset, LevelInst * level)
+{
+#pragma omp parallel for
+for(std::vector<JetInst>::iterator object = level->jet_q.begin(); object < level->jet_q.end(); object++)
+{
+if(object->status[BURNING])
+{
+    object->status[BURNING] -= 1;
+    float hp_to_deduct;
+    #pragma omp critical
+    hp_to_deduct = (float) rand() / RAND_MAX * 0.2;
+    object->hp =  (object->hp - hp_to_deduct > 0.f ? object->hp - hp_to_deduct : 0.f);
+}
+}
+
+
+}
+
+
+
+
+
 void move_radar(LevelInst * level)
 {
     level->radar.turn_angle+= level->radar.turn_speed;
@@ -571,7 +481,7 @@ do
         reference->botTarget = -1;
         finished = 1;
     } 
-    else if(follow_target != reference && fabs(rad_distance(&reference->curr,&follow_target->curr)) < radar->range_rad && distance(reference,follow_target) < radar->range_dist )
+    else if(follow_target != reference && fabs(rad_distance(&reference->curr,&follow_target->curr)) < radar->range_rad && distance(&reference->curr,&follow_target->curr) < radar->range_dist )
     {
         reference->botTarget = follow_target->ID;
         finished = 1;
@@ -650,6 +560,66 @@ void spawn_particle_pixel(asset_data * asset,LevelInst * level)
             }
         }
 
+        for(int i = 0; i< level->jet_q.size(); i++)
+        {
+            auto object = level->jet_q.at(i);
+            if(object.status[BURNING])
+            {
+                    int num = 2 + rand()%6;
+                    for(int i = 0; i< num; i++)
+                        {
+                            bool GenerateLeft = i%2;
+
+                            ParticleInst temp1 = {
+                            .type = PIXEL,
+                            .bitmap = nullptr,
+                            .color = new ALLEGRO_COLOR,
+                            .curr = {
+                                .x = object.curr.x,
+                                .y = object.curr.y,
+                                .turn_angle = angle_addition(object.curr.turn_angle, (float)rand()/RAND_MAX * (GenerateLeft ?  -PI/30  : PI/30  )) ,
+                                .speed = object.curr.speed /2
+                            },
+                            .scale_x = 2,
+                            .scale_y = 2,
+                            .alter = {
+                                .turn_speed = (float) rand()/RAND_MAX * 0.01 - 0.005,
+                                .rotatable = 1,
+                                .acceleratable = 0,
+                            },
+                            .decay = asset->prt_data[PIXEL].decay ,
+                            .isFading = true,
+                            .isFalling = true,
+                            .flip_img = 0
+                            };
+
+                            short gray_coef = rand()%30 + 50;
+                            ALLEGRO_COLOR grey = {.r = (float)gray_coef/255, .g = (float)gray_coef/255, .b = (float)gray_coef/255, .a = 1};
+                            ALLEGRO_COLOR orange = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+115)/255, .b = (float)(rand()%10+10)/255, .a = 1};
+                            (*temp1.color) = (rand()%5 ? grey : orange );
+
+
+
+                            transform(&temp1.curr,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height, 0.5 + (float) rand()/RAND_MAX * 1.5, angle_addition(temp1.curr.turn_angle,(GenerateLeft ?  -PI/2  :  PI/2  )));
+                            level->prt_q.push_back(temp1);
+                        }
+            }
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     }
@@ -680,17 +650,17 @@ void process_radar(LevelInst * level)
     if(level->radar.mode != 2) player->botTarget = -1;
     std::vector<JetInst>::iterator follow_target = findJet(level->jet_q,player->botTarget);
     if(follow_target == level->jet_q.end()) player->botTarget = -1;
-    if(fabs(rad_distance(&player->curr,&follow_target->curr)) > level->radar.range_rad || distance(player,follow_target) > level->radar.range_dist) player->botTarget = -1;
+    if(fabs(rad_distance(&player->curr,&follow_target->curr)) > level->radar.range_rad || distance(&player->curr,&follow_target->curr) > level->radar.range_dist) player->botTarget = -1;
 
 
     float tied_radar_pos = angle_addition(player->curr.turn_angle, level->radar.turn_angle);
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
             float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
-            float range_obj_player = distance(object,player);
+            float range_obj_player = distance(&object->curr,&player->curr);
         if(fabs(angle_difference(tied_radar_pos,rad_pointer)) < fabs(level->radar.turn_speed/2) && range_obj_player < level->radar.range_dist && range_obj_player > 450)
         {
-            struct RadarNode newNode = { .dist = distance(player,object), .rad_dist = level->radar.turn_angle, .decay = decay, .isTarget = (object->ID == player->botTarget ? 1 : 0)};
+            struct RadarNode newNode = { .dist = distance(&player->curr,&object->curr), .rad_dist = level->radar.turn_angle, .decay = decay, .isTarget = (object->ID == player->botTarget ? 1 : 0)};
             level->radar.node_q.push_back(newNode);
         }
 
@@ -873,11 +843,13 @@ while(!kill)
         action(lvl,assets);
         boss_ability_use(assets,lvl);
         target(lvl,assets);
-//transformation
+//transformation sequence
+        {
         transform(lvl,assets);
+        //collision(lvl,assets);
         move_radar(lvl);
-
-        collision(lvl,assets);
+        }
+        execute_status(assets,lvl);
         spawn_particle_pixel(assets,lvl);
 //draw
         render(lvl,assets,alleg5);

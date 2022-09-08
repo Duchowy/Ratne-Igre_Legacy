@@ -71,6 +71,8 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                         }
                         #pragma omp critical
                         {
+                            if(n < 2)
+                            {
                             if(shell.type >= ENUM_BULLET_TYPE_FIN) //missile
                             {
                                 shell.isBotLaunched = object->isBot;
@@ -84,10 +86,12 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                                     case SHVAK: sound = asset->sound[0]; break;
                                     case ADEN: sound = asset->sound[1]; break;
                                     case GATLING: sound = asset->sound[2]; break;
+                                    case GUNPOD: sound = asset->sound[2]; break;
                                 }
                                 al_play_sample(sound,1.0,0,1.0,ALLEGRO_PLAYMODE_ONCE,0);
 
 
+                            }
                             }
                         }
                         shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
@@ -216,8 +220,33 @@ for(std::vector<ProjInst>::iterator shell = level->proj_q.begin(); shell != leve
 
 }
 
+//returns true if is safe to shoot
+bool firendly_fire_check(std::vector<JetInst> & input_vec, std::vector<JetInst>::iterator reference, int slot)
+{
+    bool check = true;
+    float range_check =  reference->weapon[slot].launcher->projectile->trait.targeting_angle/2 + reference->weapon[slot].launcher->spread;
 
 
+    if(!reference->weapon[slot].launcher->projectile->trait.isRadarGuided)
+    {
+        for(int i = 0; i< input_vec.size(); i++)
+        {
+            auto object = input_vec.begin() + i;
+            if(object != reference && object->isBot == reference->isBot)
+            {
+                float distance_between = distance(&reference->curr,&object->curr);
+
+                if( distance_between > 10 && distance_between < 350 && fabs(rad_distance(&reference->curr,&object->curr)) < range_check) 
+                {
+                    check = false;
+                }
+                
+                
+            }
+        }
+    }
+    return check;
+}
 
 
 
@@ -262,19 +291,45 @@ switch(object->mode)
     case PURSUIT:
     {
         object->alter.target_angle = getTargetAngle(&object->curr,&player->curr,16);
-        if(fabs(rad_distance(&object->curr,&player->curr)) < asset->laun_data[object->weapon[0].type].spread) 
+        float radial_distance = rad_distance(&object->curr,&player->curr);
+
+        if(fabs(radial_distance) < object->weapon[1].launcher->projectile->trait.targeting_angle/2.f) 
         {
             if(asset->jet_data[object->type].isBoss)
             {
-                if(rand()%100 == 0 && distance(object,player) < (asset->proj_data[object->weapon[1].type].decay + asset->laun_data[object->weapon[1].type].decay) * asset->proj_data[object->weapon[1].type].alter_limit.speed_limit[1] ) object->weapon[1].engaged = 1; //boss launch missile
+                if(rand()%100 == 0 && distance(&object->curr,&player->curr) < (asset->proj_data[object->weapon[1].type].decay + asset->laun_data[object->weapon[1].type].decay) * asset->proj_data[object->weapon[1].type].alter_limit.speed_limit[1] && firendly_fire_check(level->jet_q,object,1)) object->weapon[1].engaged = 1; //boss launch missile
             }
             else
             {
-                if(rand()%600 == 0) object->weapon[1].engaged = 1; //launch missile
-            }
+                if(rand()%600 == 0 && firendly_fire_check(level->jet_q,object,1))
+                {
+                    object->weapon[1].engaged = 1; //launch missile
+                }
+                
+                
+                 
 
+
+
+
+
+            }
+            
             
         }
+        if(fabs(radial_distance) < object->weapon[2].launcher->spread)
+        {
+            if(object->weapon[2].type == RAILGUN)
+            {
+                if(distance(&object->curr,&player->curr) < asset->config.fadeDistance + asset->config.fadingLength  && firendly_fire_check(level->jet_q,object,2)) object->weapon[2].engaged = 1;
+            }
+        }
+
+
+
+
+
+
         
         
         object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[1];
@@ -284,7 +339,15 @@ switch(object->mode)
     {
         object->alter.target_angle = getTargetAngle(&object->curr,&level->jet_q.begin()->curr,8);
         float rad_dist = angle_difference(object->curr.turn_angle,object->alter.target_angle); //radial distance between object and target
-        if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread )  object->weapon[0].engaged = 1; //gun
+        if(fabs(rad_dist) < asset->laun_data[object->weapon[0].type].spread && firendly_fire_check(level->jet_q,object,0)) 
+        {
+            object->weapon[0].engaged = 1; //gun
+        }
+
+        
+
+
+
         if(fabs(rad_dist) > PI/2)
         {
             if(object->curr.speed > player->curr.speed) object->alter.target_speed = asset->jet_data[object->type].alter_limit.speed_limit[1];
@@ -323,34 +386,36 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
     {
         float turn_angle_difference = fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle));
         std::vector<JetInst>::iterator found = findJet(input_vec,object->botTarget);
-        if(found != input_vec.end() && found != reference && distance(object,findJet(input_vec,object->botTarget)) > 150 && distance(object,reference) < 900) //ally exists and is retreating
+        if(found < input_vec.end() && found != reference && distance(&object->curr,&((findJet(input_vec,object->botTarget))->curr)) > 150 && distance(&object->curr,&reference->curr) < 900) //ally exists and is retreating
         {
+            //printf("Keeping retreat up!\n");
             elegible = 1;
         }
         else if(
             object->botTarget != -1   &&  //start retreating, had a target before but is disengaging now
-            distance(object,reference) < 450 && fabs(rad_distance(&object->curr,&reference->curr)) > 2. * PI / 3. 
+            distance(&object->curr,&reference->curr) < 450 && fabs(rad_distance(&object->curr,&reference->curr)) > 2. * PI / 3. 
             && (turn_angle_difference > 3. * PI / 4. 
                 || (turn_angle_difference > 2. * PI / 3. && asset->jet_data[object->type].alter_limit.speed_limit[1] > asset->jet_data[reference->type].alter_limit.speed_limit[1]   )   
                 )
         )
         {
-                float min_distance = 1400;
+                float min_distance = 1000;
             for(std::vector<JetInst>::iterator ally = input_vec.begin(); ally != input_vec.end(); ally++)
             {
                 if(ally == reference || ally == object || ally->mode != PATROL) continue;
-                float ally_distance = distance(object,ally);
-                if(fabs(rad_distance(&object->curr,&ally->curr)) < PI/3. && ally_distance < min_distance)
+                float ally_distance = distance(&object->curr,&ally->curr);
+                if(fabs(rad_distance(&object->curr,&ally->curr)) < PI/4. && ally_distance < min_distance)
                 {
                     min_distance = ally_distance;
                     object->botTarget = ally->ID;
                     elegible = 1;
                 }
             }
+            //if(elegible) printf("Retreat engaged. My ID: %d, Target ID: %d, At work: %d\n", object->ID, object->botTarget,object->at_work);
         }
     }
     if(elegible && 
-    fabs(rad_distance(&object->curr,&reference->curr)) > (float) PI / 2. && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > (float) PI / .2
+    fabs(rad_distance(&object->curr,&reference->curr)) > (float) PI / 2.f && fabs(angle_difference(object->curr.turn_angle,reference->curr.turn_angle)) > (float) PI / 2.f
     ) object->at_work = true;
     else object->at_work = false;
 
@@ -367,7 +432,7 @@ std::vector<JetInst>::iterator player = input_vec.begin();
 #pragma omp parallel for
 for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
 {
-    float dist = distance(object,player);
+    float dist = distance(&object->curr,&player->curr);
 
     bool triggered = 0;
     bool retreating = 0;
@@ -405,12 +470,12 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
     }
     else
     {
-        float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 120;
+        float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 140;
         
         if(
-            (object->mode == PATROL   &&  (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) < PI/6 || dist < conditionlessSpot) ) ||
+            (object->mode == PATROL   &&  ( dist < conditionlessSpot || (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) < PI/6 ) ) ) ||
             (object->mode == DOGFIGHT) ||
-            (object->mode == PURSUIT &&  dist < 350) ||
+            (object->mode == PURSUIT &&  dist < 400) ||
             (object->mode == RETREAT)
         )
         {
@@ -424,12 +489,11 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
                     if(object->at_work) object->mode = RETREAT;
                     else //surroundings check
                     {
-                        if(dist<conditionlessSpot) 
+                        if(dist < conditionlessSpot || (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) > 5*PI/6 ) ) 
                         {
-                            //printf("Our angle difference: %.2f\n",fabs(angle_difference(object->curr.turn_angle,player->curr.turn_angle)));
+                            //printf("Our radial distance: %.2f, our angle difference: %.2f\n",fabs(rad_distance(&object->curr,&player->curr)),fabs(angle_difference(object->curr.turn_angle,player->curr.turn_angle)));
                             triggered = 1;
                         }
-                        
                         else object->mode = RETREAT;
                     }
                 }
@@ -468,12 +532,12 @@ if(input_vec.size() > 2)
     #pragma omp parallel for
     for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
         {
-        float obj_dist = distance(object,player);
+        float obj_dist = distance(&object->curr,&player->curr);
         for(std::vector<JetInst>::iterator ally = object+1; ally != input_vec.end(); ally++)
                 {
                     if( (object->mode != PATROL) == (ally->mode != PATROL)) continue;
-                    float dist_between = distance(object,ally);
-                    float aly_dist = distance(ally,player);
+                    float dist_between = distance(&object->curr,&ally->curr);
+                    float aly_dist = distance(&ally->curr,&player->curr);
                     #pragma omp critical
                     {
                         if(dist_between < 550)
@@ -551,7 +615,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         },
         .mode = STANDARD,
         .at_work = false,
-        .status = {0,0},
+        .status = {0},
         .isBot = bot,
         .botTarget = -1,
         .ability = nullptr,
@@ -573,12 +637,12 @@ for(int i = 0; i<ENUM_BOSS_TYPE_FIN;  i++) enemy_amount += asset->lvl_data[level
 float x = (float) map_width*0.8, y = (float) map_height/(enemy_amount+1);
 
 struct selection templat[ENUM_BOSS_TYPE_FIN] = {
-{.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3} },
-{.player_jet = F4, .weapon= {GATLING,RADAR,FLAK}},
-{.player_jet = F104, .weapon= {GATLING,INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3}},
-{.player_jet = HARRIER, .weapon= {ADEN,INFRARED,FLAK}, .multiplier = {0.7,0.7,0.3}},
-{.player_jet = MIG29, .weapon= {SHVAK,RADAR,FLAK}, .multiplier = {0.7,0.7,0.3}},
-{.player_jet = SR91, .weapon= {GATLING,RADAR,FLAK}, .multiplier = {0.7,0.7,0.3}}
+{.player_jet = MIG21,.weapon = {SHVAK, INFRARED,FLAK}, .multiplier = {0.7,0.7,0.f} },
+{.player_jet = F4, .weapon= {GATLING,RADAR,FLAK},.multiplier = {0.7,0.7,0.f}},
+{.player_jet = F104, .weapon= {GATLING,INFRARED,FLAK}, .multiplier = {0.7,0.7,0.f}},
+{.player_jet = HARRIER, .weapon= {ADEN,INFRARED,ZUNI}, .multiplier = {0.7,0.7,0.2}},
+{.player_jet = MIG29, .weapon= {SHVAK,RADAR,ZUNI}, .multiplier = {1.0,1.0,0.f}},
+{.player_jet = SR91, .weapon= {GATLING,RADAR,RAILGUN}, .multiplier = {1.0,1.0,1.7}}
 };
 
 
@@ -669,7 +733,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
 },
 { //GATLING
     .decay = 30,
-    .damage = 2,
+    .damage = 9,
     .velocity = 1.75,
     .cooldown = 3,
     .replenish_cooldown = 18,
@@ -723,7 +787,7 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .wingMounted = false,
     .projectile = asset->proj_data + AIRBURST
 },
-{ //Zuni
+{ //ZUNI
     .decay = 30,
     .damage = 0,
     .velocity = 0,
@@ -736,6 +800,34 @@ Launcher object[ENUM_LAUNCHER_TYPE_FIN]{
     .multishot = 2,
     .wingMounted = true,
     .projectile = asset->proj_data + UNGUIDED
+},
+{ //RAILGUN
+    .decay = 60,
+    .damage = 80,
+    .velocity = 14.75,
+    .cooldown = 90,
+    .replenish_cooldown = 180,
+    .ammo = 14,
+    .magazine = 5,
+    .recoil = -0.25,
+    .spread = 0.005,
+    .multishot = 1,
+    .wingMounted = false,
+    .projectile = asset->proj_data + SLUG
+},
+{ //GUNPOD
+    .decay = 30,
+    .damage = 2,
+    .velocity = 1.75,
+    .cooldown = 6,
+    .replenish_cooldown = 22,
+    .ammo = 200,
+    .magazine = 120,
+    .recoil = -0.15,
+    .spread = 0.03,
+    .multishot = 2,
+    .wingMounted = true,
+    .projectile = asset->proj_data + SLUG
 },
 
 
@@ -763,9 +855,9 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             .alter = {.turn_speed = 0,.rotatable = 0, .acceleratable = 0},
             .turn_rate = 0,.speed_rate = {0,0},.speed_limit = {0,10},1
             },
-        .radius = 0,
-        .activation_radius = 0,
-        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1, .isCountable = false},
+        .radius = 1,
+        .activation_radius = 1,
+        .trait = {.targeting_angle = 0, .draw_width = 0.7, .draw_height = 1.2, .hitCircular = 1, .isAOE = 0, .DMGfall = 1, .isRadarGuided = false},
     },
     { //airburst
         .decay = 60,
@@ -777,7 +869,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 20,
         .activation_radius = 8,
-        .trait = {.targeting_angle = 0, .draw_width = 1.2, .draw_height = 0.7, .hitCircular = 0, .isAOE = 1, .DMGfall = 0,.isCountable = false},
+        .trait = {.targeting_angle = 0, .draw_width = 1.2, .draw_height = 0.7, .hitCircular = 0, .isAOE = 1, .DMGfall = 0,.isRadarGuided = false},
     },
     { //infrared
         .decay = 100,
@@ -789,7 +881,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 7,
         .activation_radius = 3,
-        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = true},
+        .trait = {.targeting_angle = 1, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isRadarGuided = false},
     },
     { //radar
         .decay = 150,
@@ -801,7 +893,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 7,
         .activation_radius = 3,
-        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = true},
+        .trait = {.targeting_angle = 0.7, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isRadarGuided = true},
     },
     { //zuni
         .decay = 100,
@@ -813,7 +905,7 @@ Projectile object[ENUM_PROJECTILE_TYPE_FIN] {
             },
         .radius = 7,
         .activation_radius = 3,
-        .trait = {.targeting_angle = 0.f, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isCountable = false},
+        .trait = {.targeting_angle = 0.f, .draw_width = 1.0, .draw_height = 1.0, .hitCircular = 1, .isAOE = 1, .DMGfall = 0,.isRadarGuided = false},
     },
 
 

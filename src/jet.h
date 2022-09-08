@@ -2,7 +2,7 @@
 #define JET_H
 #include "common.h"
 
-
+enum JET_STATUS{BURNING,ENUM_JET_STATUS_FIN};
 
 
 
@@ -48,7 +48,7 @@ struct
     bool hitCircular; //if 0, in a 60 deg cone
     bool isAOE;
     bool DMGfall;
-    bool isCountable;
+    bool isRadarGuided;
 } trait;
 };
 
@@ -120,14 +120,14 @@ struct Ability
 struct JetInst{
 unsigned short ID;
 unsigned short type;
-int hp;
+float hp;
 struct state curr; //position and speed
 struct state_change alter; //speed alteration
 unsigned short mode;
 
 struct LaunInst weapon[3];
 bool at_work;
-bool status[ENUM_JET_STATUS_FIN];
+int status[ENUM_JET_STATUS_FIN];
 bool isBot;
 int botTarget;
 struct Ability * ability;

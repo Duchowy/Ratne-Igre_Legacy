@@ -69,7 +69,8 @@ asset_data * assets = new asset_data;
     .additionalRadar = false,
     .FPS = 60,
     .fadeDistance = 800,
-    .fadingLength = 200
+    .fadingLength = 200,
+    .collisionAccCoef = 1.0
     }
     };
 load_config(&assets->config);
@@ -155,7 +156,7 @@ if(!al_install_mouse()) return 0;
 if(!al_init_ttf_addon()) return 0;
 if(!al_install_audio()) return 0;
 if (!al_init_acodec_addon()) return 0;
-al_reserve_samples(30);
+if(!al_reserve_samples(80)) if(!al_reserve_samples(50)) if(!al_reserve_samples(30)) return 0;
 return 1;
 }
 
@@ -438,6 +439,17 @@ try{
     std::cerr << "No 'fadingLength' setting in configuration file." << std::endl;
     }
     if(config->fadingLength < 0.) config->fadingLength = 200.;
+
+    try{
+        config->collisionAccCoef = cfg.lookup("collisionAccCoef");
+    }
+    catch(const SettingNotFoundException &nfex)
+    {
+    std::cerr << "No 'collisionAccCoef' setting in configuration file." << std::endl;
+    }
+    if(config->collisionAccCoef < 0.) config->collisionAccCoef = 0.0;
+
+    
 
 
 }

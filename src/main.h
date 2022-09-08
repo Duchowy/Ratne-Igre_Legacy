@@ -25,6 +25,7 @@ bool additionalRadar;
 float FPS;
 float fadeDistance;
 float fadingLength;
+float collisionAccCoef;
 };
 
 

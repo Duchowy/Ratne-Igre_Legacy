@@ -238,9 +238,9 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
 {
 int window_width = al_get_display_width(alleg5->display);
 int window_height = al_get_display_height(alleg5->display);
-
+std::vector<JetInst>::iterator player = level->jet_q.begin();
 {//jet section
-    std::vector<JetInst>::iterator player = level->jet_q.begin();
+    
     
 
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
@@ -279,12 +279,12 @@ int window_height = al_get_display_height(alleg5->display);
             if(asset->jet_data[object->type].isBoss) 
             {
                 al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
-                al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+                al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
             }
             else 
             {
                 al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-                al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb(255 *(1 - object->hp/full_hp),255*object->hp/full_hp,0));
+                al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
             }
         if(object->mode != PATROL)
         {
@@ -329,7 +329,8 @@ al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
 
 }
 
-
+al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
+    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
 
 
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
@@ -517,8 +518,8 @@ al_draw_text(alleg5->font,HP_color,window_width-al_get_text_width(alleg5->font,H
 ## AMMO ##
 ########*/
 {
-    bool SPCisGun = !( asset->proj_data[player->weapon[2].launcher->projectile - asset->proj_data].trait.isCountable)  ;
-
+    bool SPCisGun = (player->weapon[2].launcher->ammo * player->weapon[2].multiplier > 20 );
+//asset->proj_data[player->weapon[2].launcher->projectile - asset->proj_data].trait.isCountable
 
     al_draw_filled_rectangle(0,window_height,(al_get_text_width(alleg5->font,"GUN")+5 + al_get_text_width(alleg5->font,"MSL")+5 + al_get_text_width(alleg5->font,"SPC")+5) * asset->config.UIscale
     ,window_height- 20 * asset->config.UIscale,al_map_rgb(0,20,20));                                                 //font theme
@@ -684,8 +685,7 @@ draw_radar(asset,player,&level->radar,window_width / 6,window_height/2,-PI/2,al_
 
 
 
-al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
-    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
+
 
 
 

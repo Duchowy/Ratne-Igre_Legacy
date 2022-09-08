@@ -74,6 +74,8 @@ switch(choice->weapon[i-1])
             case RADAR: button[i].name = "RADAR"; button[i].desc = "+Lock from all angles\n-Poor range"; break;
             case FLAK:button[i].name = "FLAK"; button[i].desc = "+High damage\n+AOE damage\n-Slow firerate\n-Low ammo"; break;
             case ZUNI:button[i].name = "ZUNI"; button[i].desc = "+High damage\n+AOE damage\n+Fast firerate\n-Hard to aim"; break;
+            case RAILGUN: button[i].name = "RAILGUN"; button[i].desc = "+Fast projectiles\n+Low ammo\n-Mediocre damage\n-Hard to aim"; break;
+            case GUNPOD: button[i].name = "GUNPOD"; button[i].desc = "+Fast firerate\n+High ammo\n-Mediocre damage"; break;
         }
 
 
@@ -399,6 +401,14 @@ void destroy_level(asset_data * asset, LevelInst * level)
     {
         if(object->alter) delete object->alter;
     }
+
+    for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
+    {
+        if(object->color) delete object->color;
+    }
+
+
+
 
 
     level->proj_q.clear();

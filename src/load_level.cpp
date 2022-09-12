@@ -466,6 +466,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ATLANTIC;
         asset->lvl_data[i].isBoss = false;
+        asset->lvl_data[i].isNight = true;
         break;
         }
         case PFERD:
@@ -477,6 +478,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = false;
+        asset->lvl_data[i].isNight = true;
         break;
         }
         case INDIA:
@@ -488,6 +490,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = DNEPR;
         asset->lvl_data[i].isBoss = false;
+        asset->lvl_data[i].isNight = false;
         break;
         }
         case DNEPR:
@@ -499,6 +502,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = true;
+        asset->lvl_data[i].isNight = false;
         break;
         }
         case ATLANTIC:
@@ -510,6 +514,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = true;
+        asset->lvl_data[i].isNight = false;
         break;
         }
 

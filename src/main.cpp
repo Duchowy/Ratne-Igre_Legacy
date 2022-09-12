@@ -192,6 +192,7 @@ void texture_init(struct asset_data * lvl, bool load)
 
         //ui
     lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
+    //lvl->ui_texture[1] = al_load_bitmap("texture/ui/darkness.png");
 
     lvl->sound[0] = al_load_sample("sound/gunshot_shvak.ogg");
     lvl->sound[1] = al_load_sample("sound/gunshot_aden.ogg");
@@ -220,7 +221,7 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->prt_texture[FLARE]);
         al_destroy_bitmap(lvl->prt_texture[EXPLOSION]);
         al_destroy_bitmap(lvl->prt_texture[EXPLOSION_AIRBURST]);
-        al_destroy_bitmap(lvl->ui_texture[0]);
+        for(int i = 0; i< sizeof(lvl->ui_texture) / sizeof(*lvl->ui_texture) ; i++) al_destroy_bitmap(lvl->ui_texture[i]);
         al_destroy_sample(lvl->sound[0]);
         al_destroy_sample(lvl->sound[1]);
         al_destroy_sample(lvl->sound[2]);

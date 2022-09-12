@@ -12,6 +12,7 @@ unsigned int map_width;
 unsigned int map_height;
 short next_level;
 bool isBoss;
+bool isNight;
 };
 
 struct RadarNode

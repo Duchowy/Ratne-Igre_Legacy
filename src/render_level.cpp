@@ -239,13 +239,14 @@ void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, st
 int window_width = al_get_display_width(alleg5->display);
 int window_height = al_get_display_height(alleg5->display);
 std::vector<JetInst>::iterator player = level->jet_q.begin();
+float nightColorCoef = 1.0f - asset->lvl_data[level->level_name].isNight * 0.3f;
 {//jet section
     
     
 
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
-    float dist = distance(player,object);
+    float dist = distance(&player->curr,&object->curr);
     if(dist < asset->config.fadeDistance + asset->config.fadingLength) 
     {
         float x_dist = object->curr.x - player->curr.x;
@@ -256,15 +257,13 @@ std::vector<JetInst>::iterator player = level->jet_q.begin();
 
         int full_hp = asset->jet_data[object->type].hp;
 
-        if(dist < asset->config.fadeDistance)
-        {
-        al_draw_scaled_rotated_bitmap(asset->jet_texture[object->type],23,23,
-        x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0);
-        }
-        else
+
+        float visibilityCoef = (dist < asset->config.fadeDistance ? 1.f : 1.f - (dist-asset->config.fadeDistance)/asset->config.fadingLength);
+
+
         {
             al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-            al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba(255,255,255,255 - 255*(dist-600)/200),23,23,
+            al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[object->type],al_map_rgba_f(nightColorCoef,nightColorCoef,nightColorCoef,visibilityCoef),23,23,
             x_diff, y_diff ,asset->scale_factor,asset->scale_factor,object->curr.turn_angle,0
             );
             al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
@@ -273,24 +272,30 @@ std::vector<JetInst>::iterator player = level->jet_q.begin();
         if(object->ID == player->botTarget && level->radar.mode == 2) al_draw_circle(x_diff,y_diff,21,al_map_rgb(240,10,10),2);
         
 
-        
-        
-        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-            if(asset->jet_data[object->type].isBoss) 
-            {
-                al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(0,0,0));
-                al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
-            }
-            else 
-            {
-                al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb(255,0,0));
-                al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
-            }
-        if(object->mode != PATROL)
-        {
-            al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+        float indicator_fadeDistance = asset->config.fadeDistance * (1.0f - asset->lvl_data[level->level_name].isNight * 0.3f);
 
-        }
+            if(dist < indicator_fadeDistance)
+            {
+                
+                al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb_f(1,0,0));
+                    if(asset->jet_data[object->type].isBoss) 
+                    {
+                        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb_f(0,0,0));
+                        al_draw_filled_rectangle(x_diff-10,y_diff-9,x_diff+10,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
+                    }
+                    else 
+                    {
+                        al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb_f(1,0,0));
+                        al_draw_filled_rectangle(x_diff-7,y_diff-9,x_diff+7,y_diff-6,al_map_rgb_f((1 - object->hp/full_hp),object->hp/full_hp,0));
+                    }
+                if(object->mode != PATROL)
+                {
+                    al_draw_text(alleg5->font,al_map_rgb(240,240,0),x_diff+8,y_diff-9,0,"!");
+
+                }
+            }
+
+
         #ifdef DEBUG
             al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
             al_draw_textf(alleg5->font,al_map_rgb(240,0,240),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff+3,0,"%d",object->at_work);
@@ -329,9 +334,10 @@ al_draw_scaled_rotated_bitmap(asset->proj_texture[object->type],23,23,
 
 }
 
-al_draw_scaled_rotated_bitmap(asset->jet_texture[player->type],23,23,
+al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[player->type],al_map_rgb_f(nightColorCoef,nightColorCoef,nightColorCoef),23,23,
     window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
 
+nightColorCoef = 1.0f - asset->lvl_data[level->level_name].isNight * 0.15f;
 
 al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 //particle section
@@ -342,12 +348,12 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 
 
         ALLEGRO_COLOR color = al_map_rgba_f(
-            (object->color ? object->color->r : 1),(object->color ? object->color->g : 1),(object->color ? object->color->b : 1)
-            , (object->isFading ? (float)object->decay / asset->prt_data[object->type].decay  : 1  ));
+            (object->color ? object->color->r : 1.f),(object->color ? object->color->g : 1.f),(object->color ? object->color->b : 1.f)
+            , (object->isFading ? (float)object->decay / asset->prt_data[object->type].decay  : 1.f  ));
 
         if(object->type == JET)
         {
-            al_draw_tinted_scaled_rotated_bitmap(object->bitmap,color,23,23,
+            al_draw_tinted_scaled_rotated_bitmap(object->bitmap,al_map_rgba_f(color.r*nightColorCoef, color.g*nightColorCoef, color.b*nightColorCoef, color.a )  ,23,23,
             asset->scale_factor * (object->curr.x - reference->curr.x) +window_width/2, asset->scale_factor * (object->curr.y - reference->curr.y) + window_height/2,asset->scale_factor *object->scale_x * base_scale,asset->scale_factor *object->scale_y * base_scale,
             object->curr.turn_angle,object->flip_img
             );
@@ -397,6 +403,9 @@ al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blend
 
 
 
+
+
+
 void draw_radar(asset_data * asset, std::vector<JetInst>::iterator reference ,  RadarInst * radar, float x, float y, float angle, ALLEGRO_COLOR bkgr_color)
 {
 
@@ -407,7 +416,9 @@ void draw_radar(asset_data * asset, std::vector<JetInst>::iterator reference ,  
 
 
     al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
-    al_draw_filled_pieslice(x,y,48 * asset->config.UIscale,angle+fabs(radar->range_rad),-fabs(2*radar->range_rad),bkgr_color);
+
+    al_draw_arc(x,y,28*asset->config.UIscale,angle+fabs(radar->range_rad),-fabs(2*radar->range_rad),bkgr_color,40*asset->config.UIscale);
+    //al_draw_filled_pieslice(x,y,48 * asset->config.UIscale,angle+fabs(radar->range_rad),-fabs(2*radar->range_rad),bkgr_color);
 
     if(radar->mode == 2)
     {
@@ -632,10 +643,10 @@ case 1:
     {
         float rad_pointer = atan2(( object->curr.y - player->curr.y) ,(object->curr.x - player->curr.x));
         float rad_dist = rad_distance(&player->curr,&object->curr);
-        if(distance(player,object) < level->radar.range_dist && fabs(rad_dist) < level->radar.range_rad && !asset->jet_data[object->type].isBoss) 
+        if(distance(&player->curr,&object->curr) < level->radar.range_dist && fabs(rad_dist) < level->radar.range_rad && !asset->jet_data[object->type].isBoss) 
         {
             ALLEGRO_COLOR indicator;
-            if(distance(player,object) < asset->config.fadeDistance + asset->config.fadingLength) indicator = al_map_rgb(240,240,0);
+            if(distance(&player->curr,&object->curr) < asset->config.fadeDistance + asset->config.fadingLength) indicator = al_map_rgb(240,240,0);
             else indicator = al_map_rgb(0,240,0);
             al_draw_line(window_width/2 + 14*cos(rad_pointer), window_height/2 + 14*sin(rad_pointer),
             window_width/2 + (14 + 30 * asset->config.UIscale)*cos(rad_pointer) ,window_height/2 + (14 + 30 * asset->config.UIscale)*sin(rad_pointer) ,

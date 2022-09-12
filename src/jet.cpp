@@ -306,12 +306,6 @@ switch(object->mode)
                     object->weapon[1].engaged = 1; //launch missile
                 }
                 
-                
-                 
-
-
-
-
 
             }
             

@@ -292,7 +292,7 @@ al_map_rgba_f(1.f, 1.f, 1.f, 0.8f - fabs( (float) (whichCone-2)/5) - (float) ran
 
         float indicator_fadeDistance = asset->config.fadeDistance * (1.0f - asset->lvl_data[level->level_name].isNight * 0.3f);
 
-            if(dist < indicator_fadeDistance)
+            if(dist < indicator_fadeDistance && object != player)
             {
                 
                 al_draw_filled_triangle(x_diff-8,y_diff-9,   x_diff+8,y_diff-9, x_diff, y_diff-2,al_map_rgb_f(1,0,0));

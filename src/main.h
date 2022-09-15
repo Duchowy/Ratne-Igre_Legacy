@@ -39,7 +39,7 @@ ALLEGRO_BITMAP * bkgr_texture [ENUM_BKGR_TYPE_FIN];
 ALLEGRO_BITMAP * jet_texture [ENUM_BOSS_TYPE_FIN];
 ALLEGRO_BITMAP * proj_texture [ENUM_PROJECTILE_TYPE_FIN];
 ALLEGRO_BITMAP * prt_texture[ENUM_PRT_TYPE_FIN];
-ALLEGRO_BITMAP * ui_texture[1];
+ALLEGRO_BITMAP * ui_texture[2];
 ALLEGRO_SAMPLE * sound[4];
 
 struct Boss boss_data[ENUM_BOSS_TYPE_FIN - ENUM_JET_TYPE_FIN];

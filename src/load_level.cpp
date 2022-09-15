@@ -478,7 +478,7 @@ for(int i = 0; i< ENUM_BKGR_TYPE_FIN;i++)
         asset->lvl_data[i].map_width = al_get_bitmap_width(asset->bkgr_texture[i]);
         asset->lvl_data[i].next_level = ENUM_BKGR_TYPE_FIN;
         asset->lvl_data[i].isBoss = false;
-        asset->lvl_data[i].isNight = true;
+        asset->lvl_data[i].isNight = false;
         break;
         }
         case INDIA:

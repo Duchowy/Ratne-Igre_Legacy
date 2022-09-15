@@ -2,7 +2,7 @@
 #define JET_H
 #include "common.h"
 
-enum JET_STATUS{BURNING,ENUM_JET_STATUS_FIN};
+enum JET_STATUS{BURNING,OBSCURE,ENUM_JET_STATUS_FIN};
 
 
 

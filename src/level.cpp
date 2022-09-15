@@ -677,7 +677,7 @@ void render(struct LevelInst * level, struct asset_data * asset, struct allegro5
     
     al_draw_scaled_rotated_bitmap(asset->bkgr_texture[level->level_name],0,0,
         window_width/2 - level->jet_q.front().curr.x * asset->scale_factor,window_height/2 - level->jet_q.front().curr.y * asset->scale_factor,asset->scale_factor,asset->scale_factor,0,0);
-
+        update_prompt_screen(alleg5,level);
         
 
         draw(level,level->jet_q.begin(),asset,alleg5);
@@ -743,10 +743,12 @@ while(!kill)
                 if(lvl->pauseEngaged)
                 {
                     al_resume_timer(alleg5->timer);
-
-
                     if(lvl->level_name < ENUM_LVL_TYPE_FIN) return EQ_SELECTION;
-                    else return MISSION_INIT;
+                    else 
+                    {
+                        lvl->level_name = ENUM_LVL_TYPE_FIN;
+                        return LVL_SELECTION;
+                    }
                 }
                 else if(lvl->prompt_q.size() && lvl->prompt_q.back().F_Action) 
                 {
@@ -754,7 +756,12 @@ while(!kill)
                 }
                 break;
                 case ALLEGRO_KEY_Z:
-                if(lvl->prompt_q.size() && lvl->prompt_q.back().Z_Action)
+                if(lvl->pauseEngaged)
+                {
+                    al_resume_timer(alleg5->timer);
+                    return MISSION_INIT;
+                }
+                else if(lvl->prompt_q.size() && lvl->prompt_q.back().Z_Action)
                 {
                     if(lvl->prompt_q.back().type == 1) destroy_prompt_screen(assets,lvl,lvl->prompt_q.end()-1,0);
                 }

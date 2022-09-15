@@ -189,10 +189,10 @@ void texture_init(struct asset_data * lvl, bool load)
     lvl->prt_texture[FLARE] = al_load_bitmap("texture/particle/flare.png");
     lvl->prt_texture[EXPLOSION] = al_load_bitmap("texture/particle/explosion_circular.png");
     lvl->prt_texture[EXPLOSION_AIRBURST] = al_load_bitmap("texture/particle/explosion_airburst.png");
-
+    lvl->prt_texture[SONIC_CONE] = al_load_bitmap("texture/particle/sonic_cone.png");
         //ui
     lvl->ui_texture[0] = al_load_bitmap("texture/ui/worldmap.jpg");
-    //lvl->ui_texture[1] = al_load_bitmap("texture/ui/darkness.png");
+    lvl->ui_texture[1] = al_load_bitmap("texture/ui/darkness.png");
 
     lvl->sound[0] = al_load_sample("sound/gunshot_shvak.ogg");
     lvl->sound[1] = al_load_sample("sound/gunshot_aden.ogg");
@@ -218,9 +218,7 @@ void texture_init(struct asset_data * lvl, bool load)
         al_destroy_bitmap(lvl->jet_texture[HARRIER]);
         al_destroy_bitmap(lvl->jet_texture[MIG29]);
         al_destroy_bitmap(lvl->jet_texture[SR91]);
-        al_destroy_bitmap(lvl->prt_texture[FLARE]);
-        al_destroy_bitmap(lvl->prt_texture[EXPLOSION]);
-        al_destroy_bitmap(lvl->prt_texture[EXPLOSION_AIRBURST]);
+        for(int i = 0; i< sizeof(lvl->prt_texture) / sizeof(*lvl->prt_texture) ; i++) al_destroy_bitmap(lvl->prt_texture[i]);
         for(int i = 0; i< sizeof(lvl->ui_texture) / sizeof(*lvl->ui_texture) ; i++) al_destroy_bitmap(lvl->ui_texture[i]);
         al_destroy_sample(lvl->sound[0]);
         al_destroy_sample(lvl->sound[1]);

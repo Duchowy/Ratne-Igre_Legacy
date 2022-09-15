@@ -448,16 +448,18 @@ for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input
             object->ability[BOSS_ABILITY::DASH].duration = limit->abl_data[BOSS_ABILITY::DASH].duration;
         };
 
-        if(
-            limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS] &&
-            object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
-            (dist < 350 && dist > 150 && fabs(rad_distance(&object->curr,&player->curr)) > 3*PI/5)
-        )
+        if(limit->boss_data[object->type-ENUM_JET_TYPE_FIN].ability[BOSS_ABILITY::RAND_POS])
         {
-            object->ability[BOSS_ABILITY::RAND_POS].cooldown = limit->abl_data[BOSS_ABILITY::RAND_POS].cooldown;
-            object->ability[BOSS_ABILITY::RAND_POS].duration = limit->abl_data[BOSS_ABILITY::RAND_POS].duration;
-        };
-
+            player->status[OBSCURE] = object->ID;
+            if(
+                object->ability[BOSS_ABILITY::RAND_POS].cooldown == 0 &&
+                (dist < 350 && dist > 150 && fabs(rad_distance(&object->curr,&player->curr)) > 3*PI/5)
+            )
+            {
+                object->ability[BOSS_ABILITY::RAND_POS].cooldown = limit->abl_data[BOSS_ABILITY::RAND_POS].cooldown;
+                object->ability[BOSS_ABILITY::RAND_POS].duration = limit->abl_data[BOSS_ABILITY::RAND_POS].duration;
+            };
+        }
 
 
 
@@ -609,7 +611,7 @@ JetInst jet_spawn(struct asset_data * asset, struct selection* selected,state_ch
         },
         .mode = STANDARD,
         .at_work = false,
-        .status = {0},
+        .status = {0,-1},
         .isBot = bot,
         .botTarget = -1,
         .ability = nullptr,

@@ -314,7 +314,7 @@ al_map_rgba_f(1.f, 1.f, 1.f, 0.8f - fabs( (float) (whichCone-2)/5) - (float) ran
             }
 
 
-        #ifdef DEBUG
+        #ifdef NDEBUG
             if(object != player)
             {
                 al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);

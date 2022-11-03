@@ -100,7 +100,7 @@ if(prompt != nullptr)
 
 
 
-#ifdef DEBUG
+#ifdef NDEBUG
     debug_data(alleg5,ref);
 #endif
 

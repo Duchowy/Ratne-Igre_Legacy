@@ -684,7 +684,7 @@ void render(struct LevelInst * level, struct asset_data * asset, struct allegro5
         process_radar(level);
         draw_ui(level,asset,alleg5);
 //debug
-        #ifdef DEBUG
+        #ifdef NDEBUG
         debug_data(level,asset,alleg5->font);
         #endif
         al_flip_display();

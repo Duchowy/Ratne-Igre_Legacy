@@ -39,6 +39,18 @@ ALLEGRO_FONT * font;
 #ifndef COMMON_H
 #define COMMON_H
 
+
+struct Vector2f{
+    float x;
+    float y;
+
+    void move(Vector2f & offset);
+    void setPosition(Vector2f & position);
+    Vector2f operator+(Vector2f & vector);
+    Vector2f operator-(Vector2f & vector);
+};
+
+
 struct box_string
 {
     int x;

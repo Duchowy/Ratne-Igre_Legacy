@@ -1,4 +1,4 @@
-SRC = main.cpp level.cpp load_level.cpp jet.cpp movement.cpp select_level.cpp render_level.cpp
+SRC = main.cpp level.cpp load_level.cpp jet.cpp movement.cpp common.cpp select_level.cpp render_level.cpp
 DEPS = $(addprefix src/,$(SRC))
 INCL = main.h level.h load_level.h jet.h movement.h common.h enum.h select_level.h render_level.h
 LIB = -Wl,-Bdynamic -fopenmp -lallegro -lallegro_font -lallegro_image -lallegro_primitives -lallegro_ttf -lallegro_audio -lallegro_acodec -lconfig++ -Wl,-Bstatic -lstdc++ -lpthread

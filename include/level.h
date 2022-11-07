@@ -38,8 +38,8 @@ std::vector<RadarNode> node_q;
 
 struct ParticleInst{
     short type;
-    ALLEGRO_BITMAP * bitmap;
-    ALLEGRO_COLOR * color;
+    sf::Texture * bitmap;
+    sf::Color * color;
     struct state curr;
     float scale_x;
     float scale_y;
@@ -110,7 +110,7 @@ struct Particle
 riven * spawn_riven();
 state_change_limit process_riven(riven * mod, state_change_limit * base);
 void refresh_riven(struct LevelInst * level,struct asset_data * asset);
-int level(allegro5_data*,asset_data*,LevelInst*);
+int level(sf::RenderWindow &,asset_data*,LevelInst*);
 float angle_addition(float object, float addition);
 float angle_difference(float current, float target);
 float distance(state * current, state * target );

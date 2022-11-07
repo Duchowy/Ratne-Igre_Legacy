@@ -58,7 +58,7 @@ bool collision(struct LevelInst * input, struct asset_data * asset, std::vector<
 
                 
                     ParticleInst expl = {.type = type,
-                        .bitmap = asset->prt_texture[type],
+                        .bitmap = &asset->prt_texture[type],
                         .color = nullptr,
                         .curr = {.x = shell->curr.x, .y = shell->curr.y, .turn_angle = shell->curr.turn_angle, .speed = 0   },
                         .scale_x = (float) asset->proj_data[shell->type].radius/20,

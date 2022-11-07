@@ -20,7 +20,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
 
     if(type < ENUM_BULLET_TYPE_FIN)
     {
-        object.color = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+190)/255, .b = (float)(rand()%10+30)/255, .a = 1};
+        object.color = {(rand()%20+230), (rand()%20+190), (rand()%10+30), 255};
         object.alter = nullptr;
     }
     else
@@ -69,6 +69,7 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
                             bool GenerateLeft = object->weapon[i].ammo%2;
                             transform(&shell.curr,asset->lvl_data[level->level_name].map_width,asset->lvl_data[level->level_name].map_height, 2.f + (float) rand()/RAND_MAX * 2.f, angle_addition(shell.curr.turn_angle,(GenerateLeft ?  -PI/2  :  PI/2  )));
                         }
+                        /*
                         #pragma omp critical
                         {
                             if(n < 2)
@@ -93,7 +94,7 @@ void shoot(struct LevelInst * level, struct asset_data * asset)
 
                             }
                             }
-                        }
+                        }*/
                         shell.curr.x += cos(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
                         shell.curr.y += sin(shell.curr.turn_angle)*(asset->jet_data[object->type].hitbox + asset->proj_data[shell.type].activation_radius + 0.5);
                         shell.curr.turn_angle += (float)rand()/RAND_MAX * 2 * asset->laun_data[object->weapon[0].type].spread - asset->laun_data[object->weapon[0].type].spread;

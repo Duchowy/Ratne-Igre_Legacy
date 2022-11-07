@@ -1,22 +1,9 @@
-#ifndef ALLEG_5
-#define ALLEG_5
-#include<allegro5/allegro5.h>
-#include<allegro5/allegro_primitives.h>
-#include<allegro5/allegro_font.h>
-#include<allegro5/allegro_image.h>
-#include<allegro5/allegro_ttf.h>
-#include <allegro5/allegro_audio.h>
-#include <allegro5/allegro_acodec.h>
+#ifndef SFML
+#define SFML
+#include <SFML/Graphics.hpp>
+#include<SFML/Audio.hpp>
 
 
-struct allegro5_data
-{
-ALLEGRO_DISPLAY * display;
-ALLEGRO_EVENT event;
-ALLEGRO_EVENT_QUEUE * queue;
-ALLEGRO_TIMER * timer;
-ALLEGRO_FONT * font;
-};
 
 #endif
 
@@ -39,15 +26,10 @@ ALLEGRO_FONT * font;
 #ifndef COMMON_H
 #define COMMON_H
 
+struct Button{
+    std::vector<sf::RectangleShape> box;
+    std::vector<sf::Text> text;
 
-struct Vector2f{
-    float x;
-    float y;
-
-    void move(Vector2f & offset);
-    void setPosition(Vector2f & position);
-    Vector2f operator+(Vector2f & vector);
-    Vector2f operator-(Vector2f & vector);
 };
 
 
@@ -68,6 +50,17 @@ struct box_string body;
 short decay;
 bool F_Action;
 bool Z_Action;
+};
+
+
+sf::Vector2u operator/(sf::Vector2u & vec, float num);
+sf::Vector2f operator/(sf::Vector2f & vec, float num);
+
+
+struct Button
+{
+std::vector<sf::RectangleShape> box; //the first one is always theme
+std::vector<sf::Text> text; //the first one is always a name
 };
 
 #endif

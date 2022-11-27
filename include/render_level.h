@@ -4,10 +4,10 @@
 
 
 
-void debug_data(struct LevelInst * level, struct asset_data * asset);
+void debug_data(struct LevelInst * level, struct asset_data * asset, sf::RenderWindow & display);
 void draw(struct LevelInst * level, std::vector<JetInst>::iterator reference, struct asset_data * asset, sf::RenderWindow & display);
 void draw_ui(struct LevelInst * level, struct asset_data * asset, sf::RenderWindow & display);
-void zoom(asset_data * assets, short direction);
+void zoom(sf::RenderWindow & display ,asset_data * assets, short direction);
 
 std::string extract_riven(riven * mod, unsigned short trait);
 

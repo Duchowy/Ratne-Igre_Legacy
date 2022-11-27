@@ -1,7 +1,7 @@
 #ifndef SFML
 #define SFML
-#include <SFML/Graphics.hpp>
-#include<SFML/Audio.hpp>
+#include "SFML/Graphics.hpp"
+#include "SFML/Audio.hpp"
 
 
 
@@ -27,8 +27,8 @@
 #define COMMON_H
 
 struct Button{
-    std::vector<sf::RectangleShape> box;
-    std::vector<sf::Text> text;
+    std::vector<sf::RectangleShape> box; //the first one is always theme
+    std::vector<sf::Text> text; //the first one is always a name
 
 };
 
@@ -53,14 +53,14 @@ bool Z_Action;
 };
 
 
-sf::Vector2u operator/(sf::Vector2u & vec, float num);
-sf::Vector2f operator/(sf::Vector2f & vec, float num);
+sf::Vector2u operator/(const sf::Vector2u & vec, int num);
+sf::Vector2f operator/(const sf::Vector2f & vec, double num);
 
 
-struct Button
-{
-std::vector<sf::RectangleShape> box; //the first one is always theme
-std::vector<sf::Text> text; //the first one is always a name
-};
+
+
+
+
+
 
 #endif

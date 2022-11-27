@@ -6,8 +6,8 @@ enable_testing()
 
 # path variables
 
-set(LIB_DIR ${PROJECT_SOURCE_DIR}/deps_alleg_dyn/lib)
-set(INCL_DIR ${PROJECT_SOURCE_DIR}/deps_alleg_dyn/include)
+set(LIB_DIR ${PROJECT_SOURCE_DIR}/deps_sfml/lib)
+set(INCL_DIR ${PROJECT_SOURCE_DIR}/deps_sfml/include)
 
 # prevent for in-source building
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
@@ -30,7 +30,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
 endif(WIN32)
 
 # dependency area
-find_package(SFML 2.5.1 COMPONENTS graphics)
+set(SFML_STATIC_LIBRARIES TRUE)
+find_package(SFML 2.5.1 COMPONENTS audio graphics window system REQUIRED PATHS ${PROJECT_SOURCE_DIR}/deps_sfml)
+
+#find_package(Freetype PATHS ${PROJECT_SOURCE_DIR}/deps_sfml)
+
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+
+
+
 
 if(${CMAKE_BUILD_TYPE} MATCHES Debug)
     message("Debug build.")
@@ -50,8 +63,9 @@ file(GLOB SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} -fopenmp -lconfig++ -lpthread -lstdc++ SFML_LIBRARIES)
-target_include_directories(${PROJECT_NAME} PRIVATE ${INCL_DIR} SFML_INCLUDE_DIRS)
+#-lfreetype -lopengl32 -lwinmm -lgdi32
+target_link_libraries(${PROJECT_NAME} -fopenmp -lconfig++ -lpthread -lstdc++ sfml-audio sfml-graphics sfml-window sfml-system -lm)
+target_include_directories(${PROJECT_NAME} PRIVATE ${INCL_DIR} )
 
 add_test(NAME launch COMMAND ./${PROJECT_NAME})
 # add_test(NAME leak COMMAND valgrind --leak-check=full --track-origins=yes ./${PROJECT_NAME})

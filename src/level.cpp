@@ -600,17 +600,24 @@ void render(struct LevelInst *level, struct asset_data *asset, sf::RenderWindow 
     int window_width = display.getSize().x;
     int window_height = display.getSize().y;
 
-    sf::Sprite map;
-    map.setPosition(window_width / 2 - level->jet_q.front().curr.x * asset->scale_factor, window_height / 2 - level->jet_q.front().curr.y * asset->scale_factor);
-    map.setScale(asset->scale_factor, asset->scale_factor);
+    sf::View camera = display.getView();
+    camera.setCenter(level->jet_q.front().curr.x,level->jet_q.front().curr.y);
+    display.setView(camera);
+
+    sf::Sprite map(asset->bkgr_texture[level->level_name]);
+
+
+    //map.setPosition(window_width / 2 - level->jet_q.front().curr.x * asset->scale_factor, window_height / 2 - level->jet_q.front().curr.y * asset->scale_factor);
+    map.setPosition(0,0);
+    //map.setScale(asset->scale_factor, asset->scale_factor);
     display.draw(map);
 
     draw(level, level->jet_q.begin(), asset, display);
     process_radar(level);
     draw_ui(level, asset, display);
     // debug
-#ifdef DEBUG
-// debug_data(level,asset,alleg5->font);
+#ifdef NDEBUG
+    debug_data(level,asset,display);
 #endif
     // al_flip_display();
     display.display();
@@ -619,141 +626,152 @@ void render(struct LevelInst *level, struct asset_data *asset, sf::RenderWindow 
 
 int level(sf::RenderWindow & display, asset_data *assets, LevelInst *lvl)
 {
-
     bool kill = 0;
-    bool redraw = 1;
 
-    ALLEGRO_MOUSE_STATE mouse;
-    ALLEGRO_KEYBOARD_STATE keyboard;
+    sf::Event event;
 
     while (!kill)
     {
 
         lvl->jet_q.front().weapon[0].engaged = false; // temporary solution
         lvl->jet_q.front().weapon[2].engaged = false; // temporary solution
-        al_wait_for_event(alleg5->queue, &alleg5->event);
-        switch (alleg5->event.type)
+        while(display.pollEvent(event))
         {
-        case ALLEGRO_EVENT_DISPLAY_RESIZE:
-        {
-            al_acknowledge_resize(alleg5->display);
-            if (assets->config.autoUIscale)
-                assets->config.UIscale = calculateUIscale(al_get_display_width(alleg5->display), al_get_display_height(alleg5->display));
-            render(lvl, assets, alleg5);
-        }
-        break;
-        case ALLEGRO_EVENT_DISPLAY_CLOSE:
-            kill = 1;
-            break;
-        case ALLEGRO_EVENT_TIMER:
-            redraw = 1;
-            break;
-        case ALLEGRO_EVENT_MOUSE_AXES:
-        {
-            al_get_mouse_state(&mouse);
-            if (al_get_mouse_state_axis(&mouse, 2) != 0)
-                zoom(assets, al_get_mouse_state_axis(&mouse, 2));
-            break;
-        }
-        case ALLEGRO_EVENT_KEY_DOWN:
-        {
-            switch (alleg5->event.keyboard.keycode)
+            switch (event.type)
             {
-            case ALLEGRO_KEY_SPACE:
-                lvl->jet_q.front().weapon[1].engaged = 1;
+            case sf::Event::Resized:
+            {
+                sf::View resized = display.getView();
+                resized.setSize(event.size.width,event.size.height);
+                display.setView(resized);
+
+                if (assets->config.autoUIscale)
+                    assets->config.UIscale = calculateUIscale(event.size.width, event.size.height);
+                render(lvl, assets, display);
+            }
+            break;
+            case sf::Event::Closed:
+                kill = 1;
                 break;
-            case ALLEGRO_KEY_F:
-                if (lvl->pauseEngaged)
+            case sf::Event::MouseWheelScrolled:
+            {
+                if(event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel)
                 {
-                    al_resume_timer(alleg5->timer);
-                    if (lvl->level_name < ENUM_LVL_TYPE_FIN)
-                        return EQ_SELECTION;
-                    else
+                    zoom(display,assets, event.mouseWheelScroll.delta);
+                }
+                break;
+            }
+            case sf::Event::KeyReleased:
+            {
+                switch(event.key.code)
+                {
+                    case sf::Keyboard::F:
                     {
-                        lvl->level_name = ENUM_LVL_TYPE_FIN;
-                        return LVL_SELECTION;
+                        if (lvl->pauseEngaged)
+                        {
+                            if (lvl->level_name < ENUM_LVL_TYPE_FIN)
+                                return EQ_SELECTION;
+                            else
+                            {
+                                lvl->level_name = ENUM_LVL_TYPE_FIN;
+                                return LVL_SELECTION;
+                            }
+                        }
+                        else if (lvl->prompt_q.size() && lvl->prompt_q.back().F_Action)
+                        {
+                            if (lvl->prompt_q.back().type == 1)
+                                destroy_prompt_screen(assets, lvl, lvl->prompt_q.end() - 1, 1);
+                        }
                     }
-                }
-                else if (lvl->prompt_q.size() && lvl->prompt_q.back().F_Action)
-                {
-                    if (lvl->prompt_q.back().type == 1)
-                        destroy_prompt_screen(assets, lvl, lvl->prompt_q.end() - 1, 1);
-                }
-                break;
-            case ALLEGRO_KEY_Z:
-                if (lvl->pauseEngaged)
-                {
-                    al_resume_timer(alleg5->timer);
-                    return MISSION_INIT;
-                }
-                else if (lvl->prompt_q.size() && lvl->prompt_q.back().Z_Action)
-                {
-                    if (lvl->prompt_q.back().type == 1)
-                        destroy_prompt_screen(assets, lvl, lvl->prompt_q.end() - 1, 0);
-                }
-                break;
-            case ALLEGRO_KEY_ESCAPE:
-                lvl->pauseEngaged = !lvl->pauseEngaged;
-                if (lvl->pauseEngaged)
-                {
-                    render(lvl, assets, alleg5);
-                    al_stop_timer(alleg5->timer);
-                }
-                else
-                    al_resume_timer(alleg5->timer);
-                break;
-            case ALLEGRO_KEY_R:
-            {
-                lvl->radar.mode = (lvl->radar.mode + 1 > 2 ? 0 : lvl->radar.mode + 1);
-                float new_range_rad;
-                if (!lvl->radar.mode)
-                {
-                    new_range_rad = PI / 6;
-                }
-                else
-                {
-                    new_range_rad = PI / 12;
-                }
-                if (lvl->radar.range_rad > 0)
-                    lvl->radar.range_rad = new_range_rad;
-                else
-                    lvl->radar.range_rad = -new_range_rad;
+                    break;
+                    case sf::Keyboard::Z:
+                    {
+                        if (lvl->pauseEngaged)
+                        {
+                            return MISSION_INIT;
+                        }
+                        else if (lvl->prompt_q.size() && lvl->prompt_q.back().Z_Action)
+                        {
+                            if (lvl->prompt_q.back().type == 1)
+                                destroy_prompt_screen(assets, lvl, lvl->prompt_q.end() - 1, 0);
+                        }
+                    }
+                    break;
+                    case sf::Keyboard::R:
+                    {
+                        lvl->radar.mode = (lvl->radar.mode + 1 > 2 ? 0 : lvl->radar.mode + 1);
+                        float new_range_rad;
+                        if (!lvl->radar.mode)
+                        {
+                            new_range_rad = PI / 6;
+                        }
+                        else
+                        {
+                            new_range_rad = PI / 12;
+                        }
+                        if (lvl->radar.range_rad > 0)
+                            lvl->radar.range_rad = new_range_rad;
+                        else
+                            lvl->radar.range_rad = -new_range_rad;
 
-                if (fabs(lvl->radar.turn_angle) > new_range_rad)
-                {
-                    if (lvl->radar.turn_angle > 0)
-                        lvl->radar.turn_angle = new_range_rad;
-                    else
-                        lvl->radar.turn_angle = -new_range_rad;
+                        if (fabs(lvl->radar.turn_angle) > new_range_rad)
+                        {
+                            if (lvl->radar.turn_angle > 0)
+                                lvl->radar.turn_angle = new_range_rad;
+                            else
+                                lvl->radar.turn_angle = -new_range_rad;
+                        }
+                        lvl->radar.node_q.clear();
+                    }
+                    break;
+
+                    default: break;
                 }
-                lvl->radar.node_q.clear();
             }
             break;
-            case ALLEGRO_KEY_TAB:
+
+
+
+            case sf::Event::KeyPressed:
             {
-                if (lvl->radar.mode == 2)
-                    radarCycleTarget(lvl->jet_q, lvl->jet_q.begin(), &lvl->radar);
+                if(event.key.code == sf::Keyboard::Space) lvl->jet_q.front().weapon[1].engaged = 1;
+                
+                if(event.key.code == sf::Keyboard::Escape)
+                {
+                    lvl->pauseEngaged = !lvl->pauseEngaged;
+                    if (lvl->pauseEngaged)
+                    {
+                        render(lvl, assets, display);
+                    }
+
+                }
+                
+                if(event.key.code == sf::Keyboard::Tab)
+                {
+                    if (lvl->radar.mode == 2)
+                        radarCycleTarget(lvl->jet_q, lvl->jet_q.begin(), &lvl->radar);
+                }
             }
-            break;
+            default: break;
             }
-            break;
         }
-        }
-        if (redraw && al_is_event_queue_empty(alleg5->queue))
+
+
+
+
         {
-            int window_width = al_get_display_width(alleg5->display);
-            int window_height = al_get_display_height(alleg5->display);
+            int window_width = display.getSize().x;
+            int window_height = display.getSize().y;
             { // player actions
-                al_get_mouse_state(&mouse);
-                if (mouse.buttons & 1)
+                sf::Vector2i mouse = static_cast<sf::Vector2i> (display.mapPixelToCoords( sf::Mouse::getPosition(display)))   ;
+                if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
                     lvl->jet_q.front().weapon[0].engaged = 1; // left mouse button
-                if (mouse.buttons & 2)
-                    lvl->jet_q.front().weapon[2].engaged = 1; // left mouse button
-                lvl->jet_q.front().alter.target_angle = atan2((mouse.y - window_height / 2), (mouse.x - window_width / 2));
+                if (sf::Mouse::isButtonPressed(sf::Mouse::Right))
+                    lvl->jet_q.front().weapon[2].engaged = 1; // right mouse button
+                lvl->jet_q.front().alter.target_angle = atan2((mouse.y - lvl->jet_q.front().curr.y), (mouse.x - lvl->jet_q.front().curr.x));
 
-                al_get_keyboard_state(&keyboard);
-                bool accelerate = al_key_down(&keyboard, ALLEGRO_KEY_W);
-                bool decelerate = al_key_down(&keyboard, ALLEGRO_KEY_S);
+                bool accelerate = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+                bool decelerate = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
 
                 if (accelerate ^ decelerate)
                 {
@@ -789,8 +807,7 @@ int level(sf::RenderWindow & display, asset_data *assets, LevelInst *lvl)
             execute_status(assets, lvl);
             spawn_particle_pixel(assets, lvl);
             // draw
-            render(lvl, assets, alleg5);
-            redraw = 0;
+            render(lvl, assets, display);
             garbage_collect(assets, lvl);
             cooldown(lvl->jet_q);
             replenish(assets, lvl);
@@ -802,7 +819,7 @@ int level(sf::RenderWindow & display, asset_data *assets, LevelInst *lvl)
             if (!alive_enemy_jets(lvl) && !lvl->finalPromptEngaged)
             {
                 lvl->finalPromptEngaged = true;
-                spawn_prompt_screen(assets, alleg5, lvl, (assets->lvl_data[lvl->level_name].next_level == ENUM_BKGR_TYPE_FIN && assets->lvl_data[lvl->level_name].isBoss ? 1 : 0));
+                spawn_prompt_screen(assets, display, lvl, (assets->lvl_data[lvl->level_name].next_level == ENUM_BKGR_TYPE_FIN && assets->lvl_data[lvl->level_name].isBoss ? 1 : 0));
             }
             if (lvl->finished)
             {

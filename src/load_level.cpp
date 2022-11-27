@@ -33,10 +33,9 @@ void update_graph(graph_data * graph,state_change_limit * alter, float lower, fl
 }
 
 
-int process_click(std::array<box_string, 2> & button, sf::Vector2i & mouse)
+int process_click(std::array<box_string, 2> & button,sf::RenderWindow & display)
 {
-mouse = sf::Mouse::getPosition();
-//al_get_mouse_state(mouse);
+sf::Vector2i mouse = sf::Mouse::getPosition(display);
 
 for(int i = 0; i < 2; i++)
 {
@@ -283,6 +282,8 @@ struct graph_data primary;
 struct graph_data secondary;
 
 
+display.setView(  display.getDefaultView());
+
 update_button_pos(button,button_click,display);
 
 
@@ -311,6 +312,21 @@ while(!kill && !quit)
             switch (event.type)
             {
             case sf::Event::Closed: quit = 1; break;
+            case sf::Event::KeyReleased:
+            {
+                switch(event.key.code)
+                {
+                    case sf::Keyboard::Escape:
+                    return LVL_SELECTION;
+                    break;
+                    case sf::Keyboard::F:
+                    kill = 1;
+                    break;
+                }
+            }
+            break;
+
+
             }
 
             if (event.type == sf::Event::MouseWheelScrolled)
@@ -324,14 +340,10 @@ while(!kill && !quit)
                 }
             }
             
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) return LVL_SELECTION;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::F)) kill = 1;
-            
             
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
             {
-                sf::Vector2i mouse = sf::Mouse::getPosition(display);
-                int decision = process_click(button_click,mouse);
+                int decision = process_click(button_click,display);
 
                 switch(decision)
                 {

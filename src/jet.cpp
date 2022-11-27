@@ -579,7 +579,7 @@ LaunInst object {
 .engaged = 0,
 .multiplier = multiplier,
 .type = type,
-.ammo = multiplier * launcher->ammo,
+.ammo = multiplier * static_cast<float>(launcher->ammo),
 .magazine = launcher->magazine,
 .cooldown = 0,
 .replenish_cooldown = 0,

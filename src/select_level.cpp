@@ -19,7 +19,7 @@ struct node
     int type;
 };
 
-void debug_data(sf::RenderWindow & display,struct camera * ref)
+void debug_data(sf::RenderWindow & display)
 {
     //al_draw_multiline_textf(alleg5->font,al_map_rgb(240,0,240),5,5,200,10,0,"%d x_pos\n %d y_pos\nMSAA flag: %d",ref->x_pos,ref->y_pos,al_get_display_option(alleg5->display,ALLEGRO_SAMPLES));
 }
@@ -30,7 +30,7 @@ void debug_data(sf::RenderWindow & display,struct camera * ref)
 
 
 
-void draw_node(struct camera * ref,std::array<node,ENUM_LVL_TYPE_FIN>::iterator nod,sf::RenderWindow & display)
+void draw_node(std::array<node,ENUM_LVL_TYPE_FIN>::iterator nod,sf::RenderWindow & display)
 {
 int window_width = display.getSize().x;
 int window_height = display.getSize().y;
@@ -38,7 +38,7 @@ int window_height = display.getSize().y;
 
 sf::RectangleShape node(sf::Vector2f(nod->size,nod->size));
 node.setOrigin(nod->size/2,nod->size/2);
-node.setPosition(nod->x_pos- ref->x_pos +window_width/2, nod->y_pos - ref->y_pos+window_height/2);
+node.setPosition(nod->x_pos, nod->y_pos);
 node.setFillColor(nod->color);
 node.setOutlineThickness(nod->size/6);
 node.setOutlineColor(sf::Color(27,27,0,255));
@@ -53,17 +53,15 @@ display.draw(node);
 
 
 
-void render(struct camera * ref, std::array<node,ENUM_LVL_TYPE_FIN> & node_array, box_string * prompt ,struct asset_data * asset, sf::RenderWindow & display, int * tick)
+void render(std::array<node,ENUM_LVL_TYPE_FIN> & node_array, box_string * prompt ,struct asset_data * asset, sf::RenderWindow & display, int * tick)
 {
 int window_width = display.getSize().x;
 int window_height = display.getSize().y;
 
-int cam_x = window_width/2 -ref->x_pos;
-int cam_y = window_height/2 - ref->y_pos;
 
 sf::Sprite sf_bkgr;
 sf_bkgr.setTexture(asset->ui_texture[0]);
-sf_bkgr.setPosition(-ref->x_pos+window_width/2,-ref->y_pos+window_height/2);
+sf_bkgr.setPosition(0,0);
 display.draw(sf_bkgr);
 
 
@@ -79,7 +77,7 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
     rectangle.setOrigin(sqr_dist,sqr_dist);
     rectangle.setOutlineColor(sf::Color(200,27,27,255));
     rectangle.setOutlineThickness(2);
-    rectangle.setPosition(cam_x + node_array[i].x_pos, cam_y + node_array[i].y_pos);
+    rectangle.setPosition( node_array[i].x_pos,  node_array[i].y_pos);
     display.draw(rectangle);
 
 
@@ -88,7 +86,7 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
     rectangle2.setOrigin(sqr2_dist,sqr2_dist);
     rectangle2.setOutlineColor(sf::Color(200,27,27,127));
     rectangle2.setOutlineThickness(2);
-    rectangle2.setPosition(cam_x + node_array[i].x_pos, cam_y + node_array[i].y_pos);
+    rectangle2.setPosition( node_array[i].x_pos,  node_array[i].y_pos);
     display.draw(rectangle2);
 
 
@@ -96,7 +94,7 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
     //al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 }
 
-for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++) draw_node(ref,node_array.begin()+i,display);
+for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++) draw_node(node_array.begin()+i,display);
 
 
 
@@ -104,31 +102,26 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++) draw_node(ref,node_array.begin()+i,dis
 if(prompt != nullptr)
 {
     sf::RectangleShape sf_prompt(sf::Vector2f(prompt->width,prompt->height));
-    sf_prompt.setPosition((prompt->x - ref->x_pos) +window_width/2,    (prompt->y - ref->y_pos)+window_height/2);
+    sf_prompt.setPosition(prompt->x,   prompt->y );
     sf_prompt.setOrigin(prompt->width/2,prompt->height/2);
-    sf_prompt.setFillColor(sf::Color((0,27,27,255)));
+    sf_prompt.setFillColor(sf::Color(0,27,27,255));
     display.draw(sf_prompt);
 
     sf::RectangleShape sf_foot(sf::Vector2f(prompt->width,10 + 12));
-    sf_foot.setPosition(cam_x + prompt->x,cam_y + prompt->y);
-    sf_foot.setFillColor(sf::Color((27,27,0,255)));
+    sf_foot.setPosition( prompt->x-prompt->width/2, prompt->y-prompt->height/2);
+    sf_foot.setFillColor(sf::Color(27,27,0,255));
     display.draw(sf_foot);
 
-    sf::Text sf_title;
-    sf_title.setColor(sf::Color(255,180,60,255));
-    sf_title.setString(prompt->name.c_str());
-    sf_title.setPosition(cam_x + prompt->x - prompt->width/2 +5, cam_y + prompt->y - prompt->height/2 +5);
-    sf_title.setFont(asset->font);
-    sf_title.setCharacterSize(10);
+
+    sf::Text sf_title(prompt->name,asset->font,10);
+    sf_title.setFillColor(sf::Color(255,180,60,255));
+    sf_title.setPosition( prompt->x - prompt->width/2 +5, prompt->y - prompt->height/2 +5);
     display.draw(sf_title);
 
-    sf::Text sf_desc;
-    sf_desc.setColor(sf::Color(200,200,127,255));
-    sf_desc.setString(prompt->desc.c_str());
+    sf::Text sf_desc(prompt->desc,asset->font,10);
+    sf_desc.setFillColor(sf::Color(200,200,127,255));
     sf_desc.setOrigin(sf_desc.getLocalBounds().width/2,0);
-    sf_desc.setPosition(cam_x + prompt->x, cam_y + prompt->y - prompt->height/3);
-    sf_desc.setFont(asset->font);
-    sf_desc.setCharacterSize(10);
+    sf_desc.setPosition( prompt->x,  prompt->y - prompt->height/3);
     display.draw(sf_desc);
 
 
@@ -138,8 +131,8 @@ if(prompt != nullptr)
 
 
 
-#ifdef DEBUG
-    debug_data(display,ref);
+#ifdef NDEBUG
+    debug_data(display);
 #endif
 
 display.display();
@@ -148,9 +141,9 @@ display.clear(sf::Color(27,27,27,255));
 }
 
 
-int update_node(struct camera * ref, std::array<node,ENUM_LVL_TYPE_FIN> & node_array, box_string * prompt, sf::RenderWindow & display)
+int update_node( std::array<node,ENUM_LVL_TYPE_FIN> & node_array, box_string * prompt, sf::RenderWindow & display)
 {
-sf::Vector2i mouse = sf::Mouse::getPosition(display);
+sf::Vector2i mouse =static_cast<sf::Vector2i> (display.mapPixelToCoords( sf::Mouse::getPosition(display)))   ;
 
 
 int window_width = display.getSize().x;
@@ -160,8 +153,8 @@ int window_height = display.getSize().y;
 if(prompt)
 {
 
-if(prompt->x - prompt->width/2 - ref->x_pos + window_width/2 <= mouse.x && mouse.x <= prompt->x + prompt->width/2 - ref->x_pos + window_width/2 &&
-prompt->y - prompt->height/2 - ref->y_pos + window_height/2 <= mouse.y && mouse.y <= prompt->y + prompt->height/2 - ref->y_pos + window_height/2)
+if(prompt->x - prompt->width/2  <= mouse.x && mouse.x <= prompt->x + prompt->width/2  &&
+prompt->y - prompt->height/2  <= mouse.y && mouse.y <= prompt->y + prompt->height/2  )
 return -1;
     
 }
@@ -173,8 +166,8 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
 {
     
     
-if((node_array[i].x_pos - node_array[i].size/2 - ref->x_pos) +window_width/2 <= mouse.x && mouse.x <=   (node_array[i].x_pos + node_array[i].size/2  - ref->x_pos) +window_width/2  &&
-(node_array[i].y_pos - node_array[i].size/2 - ref->y_pos)+window_height/2 <= mouse.y && mouse.y <= (node_array[i].y_pos + node_array[i].size/2 - ref->y_pos)+window_height/2)
+if((node_array[i].x_pos - node_array[i].size/2 )  <= mouse.x && mouse.x <=   (node_array[i].x_pos + node_array[i].size/2 )   &&
+(node_array[i].y_pos - node_array[i].size/2) <= mouse.y && mouse.y <= (node_array[i].y_pos + node_array[i].size/2 ))
 {
 return i;
 }
@@ -194,6 +187,8 @@ int lvl_select(struct LevelInst * level,struct asset_data * asset, sf::RenderWin
 int tick = 0;
 refresh_riven(level,asset);
 
+display.setView(  sf::View(sf::Vector2f(0,0), static_cast<sf::Vector2f>( display.getSize())));
+
 int lvl_selected = level->level_name;
 std::array<node,ENUM_LVL_TYPE_FIN> node_array {{{1586,358,20,sf::Color(120,120,120,255),0} , {2148,588,20,sf::Color(120,120,120,255),1} , {1020,864,20,sf::Color(120,120,0,255),2}}};
 
@@ -206,7 +201,7 @@ box_string lvl_select_prompt_data[ENUM_LVL_TYPE_FIN] =
 
 box_string * prompt = (lvl_selected == ENUM_LVL_TYPE_FIN ? nullptr : lvl_select_prompt_data + lvl_selected);
 
-struct camera ref = {asset->ui_texture[0].getSize().x/2,asset->ui_texture[0].getSize().y/2};
+//struct camera ref = {asset->ui_texture[0].getSize().x/2,asset->ui_texture[0].getSize().y/2};
 
 
 bool kill = 0;
@@ -227,14 +222,30 @@ while(!kill && !quit)
         switch (event_q.type)
         {
         case sf::Event::Closed: quit = 1; break;
-        }
 
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) return QUIT;
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::F)) if(prompt != nullptr) kill = 1; 
+        case sf::Event::KeyReleased:
+        {
+            switch(event_q.key.code)
+            {
+                case sf::Keyboard::Escape:
+                return QUIT;
+                break;
+                case sf::Keyboard::F:
+                if(prompt != nullptr) kill = 1;
+                break;
+                default: break;
+            }
+        }
+        break;
+
+        default: break;
+        }
+        //if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) return QUIT;
+        //if(sf::Keyboard::isKeyPressed(sf::Keyboard::F)) if(prompt != nullptr) kill = 1; 
 
         if (event_q.type == sf::Event::MouseButtonPressed && event_q.mouseButton.button == sf::Mouse::Left)
             {
-                int update_selected = update_node(&ref,node_array,prompt,display);
+                int update_selected = update_node(node_array,prompt,display);
                 
                 if(update_selected != lvl_selected && update_selected != -1)
                 {
@@ -253,15 +264,21 @@ while(!kill && !quit)
 
 {   
     {
-        sf::Vector2i mouse = sf::Mouse::getPosition(display);
-            if(mouse.x < 80) ref.x_pos = (ref.x_pos - 12 >= 0 ?  ref.x_pos - 12 : 0);
-            if(mouse.x > display.getSize().x - 80) ref.x_pos = (ref.x_pos + 12 <= asset->ui_texture[0].getSize().x ?  ref.x_pos + 12 : asset->ui_texture[0].getSize().x);
-            if(mouse.y < 80) ref.y_pos = (ref.y_pos - 12 >= 0 ?  ref.y_pos - 12 : 0);
-            if(mouse.y > display.getSize().y - 80) ref.y_pos = (ref.y_pos + 12 <= asset->ui_texture[0].getSize().y ?  ref.y_pos + 12 : asset->ui_texture[0].getSize().y);
-    
+        sf::Vector2i mouse =  sf::Mouse::getPosition(display);
+        
+        sf::View viewport = display.getView();
+
+        
+        sf::Vector2f ref = viewport.getCenter();
+            if(mouse.x < 80) ref.x = (ref.x - 12 >= 0 ?  ref.x - 12 : 0);
+            if(mouse.x > display.getSize().x - 80) ref.x = (ref.x + 12 <= asset->ui_texture[0].getSize().x ?  ref.x + 12 : asset->ui_texture[0].getSize().x);
+            if(mouse.y < 80) ref.y = (ref.y - 12 >= 0 ?  ref.y - 12 : 0);
+            if(mouse.y > display.getSize().y - 80) ref.y = (ref.y + 12 <= asset->ui_texture[0].getSize().y ?  ref.y + 12 : asset->ui_texture[0].getSize().y);
+        viewport.setCenter(ref);
+        display.setView(viewport);
     }
 
-    render(&ref,node_array,prompt,asset,display,&tick);
+    render(node_array,prompt,asset,display,&tick);
     
     tick = (tick + 1 >= 40 ? 0 : tick + 1 );
     

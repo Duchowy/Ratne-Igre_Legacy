@@ -3,11 +3,7 @@
 #include "main.h"
 #include "load_level.h"
 
-struct camera
-{
-int x_pos;
-int y_pos;
-};
+
 
 
 struct node
@@ -75,6 +71,7 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
 
     sf::RectangleShape rectangle(sf::Vector2f(2*sqr_dist,2*sqr_dist));
     rectangle.setOrigin(sqr_dist,sqr_dist);
+    rectangle.setFillColor(sf::Color(0,0,0,0));
     rectangle.setOutlineColor(sf::Color(200,27,27,255));
     rectangle.setOutlineThickness(2);
     rectangle.setPosition( node_array[i].x_pos,  node_array[i].y_pos);
@@ -84,14 +81,12 @@ for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++)
 
     sf::RectangleShape rectangle2(sf::Vector2f(2*sqr2_dist,2*sqr2_dist));
     rectangle2.setOrigin(sqr2_dist,sqr2_dist);
+    rectangle2.setFillColor(sf::Color(0,0,0,0));
     rectangle2.setOutlineColor(sf::Color(200,27,27,127));
     rectangle2.setOutlineThickness(2);
     rectangle2.setPosition( node_array[i].x_pos,  node_array[i].y_pos);
     display.draw(rectangle2);
 
-
-
-    //al_set_blender(ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA); //default blending
 }
 
 for(int i = 0; i< ENUM_LVL_TYPE_FIN; i++) draw_node(node_array.begin()+i,display);
@@ -187,7 +182,7 @@ int lvl_select(struct LevelInst * level,struct asset_data * asset, sf::RenderWin
 int tick = 0;
 refresh_riven(level,asset);
 
-display.setView(  sf::View(sf::Vector2f(0,0), static_cast<sf::Vector2f>( display.getSize())));
+display.setView(  sf::View(  static_cast<sf::Vector2f>(asset->ui_texture[0].getSize()/2), static_cast<sf::Vector2f>( display.getSize())));
 
 int lvl_selected = level->level_name;
 std::array<node,ENUM_LVL_TYPE_FIN> node_array {{{1586,358,20,sf::Color(120,120,120,255),0} , {2148,588,20,sf::Color(120,120,120,255),1} , {1020,864,20,sf::Color(120,120,0,255),2}}};

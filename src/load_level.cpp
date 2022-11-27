@@ -165,14 +165,16 @@ button_inst.setOrigin(sf::Vector2f(button[i].width/2,button[i].height/2));
 button_inst.setPosition(sf::Vector2f(button[i].x,button[i].y));
 display.draw(button_inst);
 
-sf::Text sf_name(button[i].name,assets->font,10);
-sf_name.setColor(sf::Color(240,240,240,255));
+sf::Text sf_name(button[i].name,assets->font,12);
+sf_name.setFillColor(sf::Color(240,240,240,255));
+sf_name.setOrigin(sf_name.getGlobalBounds().width/2,0);
 sf_name.setPosition(button[i].x,button[i].y);
 display.draw(sf_name);
 
-sf::Text sf_desc(button[i].desc,assets->font,10);
-sf_desc.setColor(sf::Color(240,240,240,255));
-sf_desc.setPosition(button[i].x + sf_desc.getLocalBounds().height,button[i].y);
+sf::Text sf_desc(button[i].desc,assets->font,12);
+sf_desc.setFillColor(sf::Color(240,240,240,255));
+sf_desc.setOrigin(sf_desc.getGlobalBounds().width/2,0);
+sf_desc.setPosition(button[i].x ,button[i].y - button[i].height/2 - sf_desc.getLocalBounds().height - 12);
 display.draw(sf_desc);
 }
 
@@ -180,7 +182,7 @@ display.draw(sf_desc);
 sf::Sprite sf_player;
 sf_player.setTexture(assets->jet_texture[player->choice.player_jet]);
 sf_player.setOrigin(24,24);
-sf_player.setPosition(button[0].x,button[0].y - button[0].height/2 - 23);
+sf_player.setPosition(button[0].x,button[0].y - button[0].height/2 - 24 - 48);
 display.draw(sf_player);
 }
 

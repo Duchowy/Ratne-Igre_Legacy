@@ -18,6 +18,7 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, sf::RenderW
             buffer += std::to_string(object->alter.turn_speed)+" turn speed\n";
             buffer += std::to_string(object->curr.speed)+" speed\n";
             buffer += std::to_string(object->weapon[0].engaged)+" shoot\n";
+            if(level->prt_q.size() > 1) buffer+= std::to_string(level->prt_q[1].color->a) + "\n";
             
             sf::Text debugInfo(buffer,asset->font,10);
             debugInfo.setFillColor(sf::Color(240,0,240,255));
@@ -302,10 +303,13 @@ short nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 76;
         
         if(object->ID == player->botTarget && level->radar.mode == 2)
         {
-            sf::CircleShape targetIndicator(21.f,36);
+            sf::RectangleShape targetIndicator(sf::Vector2f(21.f,21.f));
+            //sf::CircleShape targetIndicator(21.f,36);
             targetIndicator.setPosition(sf::Vector2f(object->curr.x,object->curr.y));
+            targetIndicator.setOrigin(targetIndicator.getSize()/2);
             targetIndicator.setOutlineThickness(2);
             targetIndicator.setOutlineColor(sf::Color(240,10,10,255));
+            targetIndicator.setFillColor(sf::Color(0,0,0,0));
             display.draw(targetIndicator);
         }
         
@@ -382,12 +386,11 @@ for(std::vector<ProjInst>::iterator object = level->proj_q.begin(); object != le
 
 }
 
-//al_draw_tinted_scaled_rotated_bitmap(asset->jet_texture[player->type],al_map_rgb_f(nightColorCoef,nightColorCoef,nightColorCoef),24,24,
-//    window_width/2,window_height/2,asset->scale_factor,asset->scale_factor,player->curr.turn_angle,0);
+
 
 nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 38;
 
-//al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+
 //particle section
 {
     for(std::vector<ParticleInst>::iterator object = level->prt_q.begin(); object != level->prt_q.end(); object++)
@@ -395,14 +398,17 @@ nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 38;
         float base_scale = (object->isFalling ? (float) object->decay / asset->prt_data[object->type].decay : 1 );
 
 
-        sf::Color color = sf::Color(
-            (object->color ? object->color->r : 1.f),(object->color ? object->color->g : 1.f),(object->color ? object->color->b : 1.f)
-            , (object->isFading ? (float)object->decay / asset->prt_data[object->type].decay  : 1.f  ));
+
+        sf::Color color(object->color ? *(object->color) : sf::Color(255,255,255,255) );
+        if(object->isFading) color.a = 255 * static_cast<float>(object->decay) / asset->prt_data[object->type].decay;
+
+
+
 
         if(object->type == JET)
         {
             sf::Sprite model;
-            model.setTexture(asset->jet_texture[object->type]);
+            model.setTexture(*(object->bitmap));
             model.setOrigin(sf::Vector2f(24,24));
             model.setPosition(object->curr.x, object->curr.y);
             model.setRotation(object->curr.turn_angle * 180 / PI);
@@ -611,7 +617,7 @@ else if( current_HP > 0.3)
 else
 {
     HP_text = "Damaged";
-    HP_color = sf::Color(240,0,255);
+    HP_color = sf::Color(240,0,0,255);
 }
 sf::Text draw_HP_text(HP_text,asset->font,12);
 draw_HP_text.setPosition(window_width- draw_HP_text.getGlobalBounds().width  -10 * asset->config.UIscale,window_height-20*asset->config.UIscale);
@@ -692,7 +698,7 @@ display.draw(draw_HP_text);
     //mag cooler
     if(mag_percentage <= 0.4)
     {
-    sf::RectangleShape GunCool(sf::Vector2f(20,80.f * mag_percentage));
+    sf::RectangleShape GunCool(sf::Vector2f(20,80.f * (1.f - mag_percentage)));
     GunCool.setOrigin(10,GunCool.getSize().y - 40);
     GunCool.setFillColor(mag_percentage ? sf::Color(250,250,250,  153.f * (float)(0.4 - mag_percentage) / 0.4) : sf::Color(240,120,60,153));
     GunCool.setPosition( static_cast<sf::Vector2f>(display.getSize()/2. - sf::Vector2u(100,0)) );

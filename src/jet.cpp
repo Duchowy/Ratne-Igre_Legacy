@@ -25,7 +25,7 @@ ProjInst spawn_projectile(unsigned short type, Launcher * gun, struct state * po
     }
     else
     {
-        object.color = {1,1,1,1};
+        object.color = {255,255,255,255};
         object.alter = new state_change;
         object.alter->acceleratable = 1;
         object.alter->rotatable = 1;

@@ -508,7 +508,7 @@ void spawn_particle_pixel(asset_data *asset, LevelInst *level)
                         short gray_coef = rand() % 30 + 50;
                         sf::Color grey(gray_coef, gray_coef, gray_coef, 255);
                         sf::Color orange(rand() % 20 + 230, rand() % 20 + 115, rand() % 10 + 10, 255);
-                        (*temp1.color) = (rand() % 5 ? grey : orange);
+                        *(temp1.color) = (rand() % 5 ? grey : orange);
 
                         transform(&temp1.curr, asset->lvl_data[level->level_name].map_width, asset->lvl_data[level->level_name].map_height, 0.5 + (float)rand() / RAND_MAX * 1.5, angle_addition(temp1.curr.turn_angle, (GenerateLeft ? -PI / 2 : PI / 2)));
                         level->prt_q.push_back(temp1);
@@ -551,9 +551,9 @@ void spawn_particle_pixel(asset_data *asset, LevelInst *level)
                         .flip_img = 0};
 
                     short gray_coef = rand() % 30 + 50;
-                    //                    ALLEGRO_COLOR grey = {.r = (float)gray_coef/255, .g = (float)gray_coef/255, .b = (float)gray_coef/255, .a = 1};
-                    //                    ALLEGRO_COLOR orange = {.r = (float)(rand()%20+230)/255, .g = (float)(rand()%20+115)/255, .b = (float)(rand()%10+10)/255, .a = 1};
-                    //                    (*temp1.color) = (rand()%5 ? grey : orange );
+                    sf::Color grey(gray_coef, gray_coef, gray_coef, 255);
+                    sf::Color orange(rand() % 20 + 230, rand() % 20 + 115, rand() % 10 + 10, 255);
+                    (*temp1.color) = (rand()%5 ? grey : orange );
 
                     transform(&temp1.curr, asset->lvl_data[level->level_name].map_width, asset->lvl_data[level->level_name].map_height, 0.5 + (float)rand() / RAND_MAX * 1.5, angle_addition(temp1.curr.turn_angle, (GenerateLeft ? -PI / 2 : PI / 2)));
                     level->prt_q.push_back(temp1);

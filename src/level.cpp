@@ -500,7 +500,7 @@ void spawn_particle_pixel(asset_data *asset, LevelInst *level)
                                 .rotatable = 1,
                                 .acceleratable = 0,
                             },
-                            .decay = (object.decay > asset->prt_data[JET].decay ? asset->prt_data[PIXEL].decay : object.decay),
+                            .decay = (object.decay >= asset->prt_data[PIXEL].decay ? asset->prt_data[PIXEL].decay : object.decay),
                             .isFading = true,
                             .isFalling = true,
                             .flip_img = 0};
@@ -605,18 +605,14 @@ void render(struct LevelInst *level, struct asset_data *asset, sf::RenderWindow 
     display.setView(camera);
 
     sf::Sprite map(asset->bkgr_texture[level->level_name]);
-
-
-    //map.setPosition(window_width / 2 - level->jet_q.front().curr.x * asset->scale_factor, window_height / 2 - level->jet_q.front().curr.y * asset->scale_factor);
     map.setPosition(0,0);
-    //map.setScale(asset->scale_factor, asset->scale_factor);
     display.draw(map);
 
     draw(level, level->jet_q.begin(), asset, display);
     process_radar(level);
     draw_ui(level, asset, display);
     // debug
-#ifdef NDEBUG
+#ifdef DEBUG
     debug_data(level,asset,display);
 #endif
     // al_flip_display();

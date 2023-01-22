@@ -22,7 +22,7 @@ set(CMAKE_BUILD_TYPE Debug) #Release
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_DEBUG_INIT "-Wall")
-set(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -g -D DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE_INIT "-Wall -O2 -static-libgcc -static-libstdc++")
 
 if(WIN32)
@@ -30,8 +30,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mwindows")
 endif(WIN32)
 
 # dependency area
-set(SFML_STATIC_LIBRARIES TRUE)
-find_package(SFML 2.5.1 COMPONENTS audio graphics window system REQUIRED PATHS ${PROJECT_SOURCE_DIR}/deps_sfml)
+#set(SFML_STATIC_LIBRARIES TRUE)
+find_package(SFML 2.5.1 COMPONENTS audio graphics window system REQUIRED)
 
 #find_package(Freetype PATHS ${PROJECT_SOURCE_DIR}/deps_sfml)
 

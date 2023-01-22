@@ -35,7 +35,7 @@ void update_graph(graph_data * graph,state_change_limit * alter, float lower, fl
 
 int process_click(std::array<box_string, 2> & button,sf::RenderWindow & display)
 {
-sf::Vector2i mouse = sf::Mouse::getPosition(display);
+sf::Vector2i mouse = static_cast<sf::Vector2i> (display.mapPixelToCoords( sf::Mouse::getPosition(display)));
 
 for(int i = 0; i < 2; i++)
 {
@@ -88,7 +88,6 @@ void update_button_pos(std::array<box_string, 5> & button,std::array<box_string,
 {
 for(int i = 0; i<5; i++)
 {
-//button[i].x = al_get_display_width(alleg5->display)*(1+2*i)/8;
 button[i].x = (float) display.getSize().x/2 + 250*i - 375;
 
 button[i].y = display.getSize().y * 7/10;
@@ -284,7 +283,7 @@ struct graph_data primary;
 struct graph_data secondary;
 
 
-display.setView(  display.getDefaultView());
+display.setView(sf::View(static_cast<sf::Vector2f>(display.getSize() /2),static_cast<sf::Vector2f>(display.getSize())));
 
 update_button_pos(button,button_click,display);
 
@@ -335,7 +334,7 @@ while(!kill && !quit)
             {
                 if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel)
                 {
-                    sf::Vector2i mouse = sf::Mouse::getPosition(display);
+                    sf::Vector2i mouse = static_cast<sf::Vector2i> (display.mapPixelToCoords( sf::Mouse::getPosition(display)));
                     update(button,&lvl->player.choice,mouse,event.mouseWheelScroll.delta);
                     update_graph(&primary,&assets->jet_data[lvl->player.choice.player_jet].alter_limit,   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );
                     if(lvl->player.mod[lvl->player.choice.player_jet].engaged) update_graph(&secondary,lvl->player.custom_stat[lvl->player.choice.player_jet],   0.9 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[0], 1.1 * assets->jet_data[lvl->player.choice.player_jet].alter_limit.speed_limit[1]    );

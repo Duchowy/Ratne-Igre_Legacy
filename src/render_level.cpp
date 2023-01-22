@@ -18,7 +18,7 @@ void debug_data(struct LevelInst * level, struct asset_data * asset, sf::RenderW
             buffer += std::to_string(object->alter.turn_speed)+" turn speed\n";
             buffer += std::to_string(object->curr.speed)+" speed\n";
             buffer += std::to_string(object->weapon[0].engaged)+" shoot\n";
-            if(level->prt_q.size() > 1) buffer+= std::to_string(level->prt_q[1].color->a) + "\n";
+            if(level->prt_q.size() > 1 && level->prt_q[1].color) buffer+= std::to_string(level->prt_q[1].color->a) + "\n";
             
             sf::Text debugInfo(buffer,asset->font,10);
             debugInfo.setFillColor(sf::Color(240,0,240,255));
@@ -208,7 +208,10 @@ level->prompt_q.push_back(prompt);
 void draw_pause_screen(struct LevelInst * level, struct asset_data * asset, sf::RenderWindow & display)
 {
 int window_width = display.getSize().x;
-int window_height = display.getSize().y; 
+int window_height = display.getSize().y;
+
+sf::View chase = display.getView();
+display.setView(sf::View(static_cast<sf::Vector2f>(display.getSize() /2),static_cast<sf::Vector2f>(display.getSize())));
 
 //al_set_blender(ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 sf::RectangleShape pauseTheme(sf::Vector2f(window_width,window_height));
@@ -235,6 +238,7 @@ Desc.setFillColor(sf::Color(240,240,240,255));
 display.draw(screen);
 display.draw(Title);
 display.draw(Desc);
+display.setView(chase);
 
 }
 
@@ -252,7 +256,7 @@ if(assets->scale_factor > assets->config.zoomUpperLimit) assets->scale_factor = 
 
 
 sf::View camera = display.getView();
-camera.setSize(display.getDefaultView().getSize() * assets->scale_factor);
+camera.setSize(static_cast<sf::Vector2f>(display.getSize()) * assets->scale_factor);
 display.setView(camera);
 }
 
@@ -304,7 +308,6 @@ short nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 76;
         if(object->ID == player->botTarget && level->radar.mode == 2)
         {
             sf::RectangleShape targetIndicator(sf::Vector2f(21.f,21.f));
-            //sf::CircleShape targetIndicator(21.f,36);
             targetIndicator.setPosition(sf::Vector2f(object->curr.x,object->curr.y));
             targetIndicator.setOrigin(targetIndicator.getSize()/2);
             targetIndicator.setOutlineThickness(2);
@@ -342,7 +345,7 @@ short nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 76;
             }
 
 
-        #ifdef NDEBUG
+        #ifdef DEBUG
             if(object != player)
             {
                 //al_draw_textf(alleg5->font,al_map_rgb(240,140,0),x_diff+8+al_get_text_width(alleg5->font,"!"),y_diff-9,0,"%d",object->mode);
@@ -400,7 +403,7 @@ nightColorCoef = 255 - asset->lvl_data[level->level_name].isNight * 38;
 
 
         sf::Color color(object->color ? *(object->color) : sf::Color(255,255,255,255) );
-        if(object->isFading) color.a = 255 * static_cast<float>(object->decay) / asset->prt_data[object->type].decay;
+        if(object->isFading) color.a = 255 * object->decay / asset->prt_data[object->type].decay;
 
 
 
@@ -574,7 +577,8 @@ int window_width = display.getSize().x;
 int window_height = display.getSize().y;
 
 sf::View chase = display.getView();
-display.setView(display.getDefaultView());
+display.setView(sf::View(static_cast<sf::Vector2f>(display.getSize()/2),static_cast<sf::Vector2f>(display.getSize())));
+
 
 std::vector<JetInst>::iterator player = level->jet_q.begin();
 
@@ -665,8 +669,8 @@ display.draw(draw_HP_text);
 
     float themeLength = GunText.getGlobalBounds().width +5 + MslText.getGlobalBounds().width + 5 + SpcText.getGlobalBounds().width +5 + ThrText.getGlobalBounds().width + 5;
     
-    sf::RectangleShape theme(sf::Vector2f(themeLength,20 * asset->config.UIscale));
-    theme.setPosition(0,window_height- 20 * asset->config.UIscale);
+    sf::RectangleShape theme(sf::Vector2f(themeLength,14 * asset->config.UIscale));
+    theme.setPosition(0,window_height- 14 * asset->config.UIscale);
     theme.setFillColor(sf::Color(0,20,20));
     
     //font theme; not to confuse with gun ammo indicator
@@ -716,7 +720,7 @@ display.draw(draw_HP_text);
     {
     sf::RectangleShape bar(sf::Vector2f(MslText.getGlobalBounds().width,2));
     bar.setFillColor(i+player->weapon[1].magazine >= player->weapon[1].ammo ?  sf::Color(240,120,60)  :  sf::Color (200,180,100)  );
-    bar.setPosition((GunText.getGlobalBounds().width +5)* asset->config.UIscale,window_height-20.5* asset->config.UIscale -3*(i+1));
+    bar.setPosition((GunText.getGlobalBounds().width +5)* asset->config.UIscale,window_height-theme.getSize().y* asset->config.UIscale -3*(i+1));
     display.draw(bar);
     }
 //special indicator
@@ -752,7 +756,7 @@ display.draw(draw_HP_text);
             bar.setFillColor(i+player->weapon[2].magazine >= player->weapon[2].ammo ?  sf::Color(200,180,100)  :  sf::Color (250,250,250)  );
             bar.setPosition(
                 (GunText.getGlobalBounds().width +5 + MslText.getGlobalBounds().width + 5)* asset->config.UIscale,
-                window_height-20.5* asset->config.UIscale -3*(i+1));
+                window_height-theme.getSize().y* asset->config.UIscale -3*(i+1));
             display.draw(bar);
         }
 
@@ -787,14 +791,14 @@ case 1:
     delim1[0].position = sf::Vector2f(window_width/2 + 20*cos(rad_range_delimiter),window_height/2 + 20*sin(rad_range_delimiter));
     delim1[1].position = delim1[0].position + sf::Vector2f(16 * asset->config.UIscale*cos(rad_range_delimiter),16 * asset->config.UIscale*sin(rad_range_delimiter));
     delim1[0].color = delim1[1].color = sf::Color(240,240,240,255);
-    
+    display.draw(delim1);
     
     rad_range_delimiter = player->curr.turn_angle-fabs(level->radar.range_rad);
     sf::VertexArray delim2(sf::Lines,2);
     delim2[0].position = sf::Vector2f(window_width/2 + 20*cos(rad_range_delimiter),window_height/2 + 20*sin(rad_range_delimiter));
     delim2[1].position = delim2[0].position + sf::Vector2f(16 * asset->config.UIscale*cos(rad_range_delimiter),16 * asset->config.UIscale*sin(rad_range_delimiter));
     delim2[0].color = delim2[1].color = sf::Color(240,240,240,255);
-
+    display.draw(delim2);
 
     for(std::vector<JetInst>::iterator object = level->jet_q.begin()+1; object != level->jet_q.end(); object++)
     {
@@ -819,6 +823,7 @@ case 1:
                 pointer[1].position = pointer[0].position + sf::Vector2f(30 * asset->config.UIscale*cos(rad_pointer),30 * asset->config.UIscale*sin(rad_pointer));
                 pointer[0].color = pointer[1].color = sf::Color(240,0,0);
             }
+            display.draw(pointer);
         }
         
 

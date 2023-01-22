@@ -420,6 +420,45 @@ bool elegibleForRetreat(std::vector<JetInst> & input_vec, std::vector<JetInst>::
 }
 
 
+void decision_graph(std::vector<JetInst> &input_vec, struct asset_data * limit)
+{
+std::vector<JetInst>::iterator player = input_vec.begin();
+#pragma omp parallel for
+for(std::vector<JetInst>::iterator object = input_vec.begin()+1; object != input_vec.end(); object++)
+{
+    float dist = distance(&object->curr,&player->curr);
+    switch (object->mode)
+    {
+        case PURSUIT:
+            if(dist < 160) object->mode = DOGFIGHT;
+            if(dist > 400) object->mode = PATROL;
+        break;
+        case PATROL:
+            float conditionlessSpot = 160 + (1-(object->hp / limit->jet_data[object->type].hp)) * 140;
+            if( dist < conditionlessSpot || (dist < 350 && fabs(rad_distance(&object->curr,&player->curr)) < PI/6 ) )
+            object->mode = DOGFIGHT;
+        break;
+        case DOGFIGHT:
+            if(dist >= 160) object->mode = DOGFIGHT;
+            if(object->hp <= 30 && elegibleForRetreat(input_vec,object,player,limit)) object->mode = RETREAT;
+        break;
+        case RETREAT:
+            if(fabs(rad_distance(&object->curr,&player->curr)) < PI / 2.
+            && 
+            fabs(angle_difference(object->curr.turn_angle,player->curr.turn_angle)) < (float) PI / 2.f
+            )
+        break;
+    }
+
+
+}
+
+
+
+
+}
+
+
 //all boss abilities used & standard bot actions
 void decision(std::vector<JetInst> &input_vec, struct asset_data * limit)
 {

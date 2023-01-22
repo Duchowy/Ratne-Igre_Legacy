@@ -30,6 +30,19 @@ struct Button{
     std::vector<sf::RectangleShape> box; //the first one is always theme
     std::vector<sf::Text> text; //the first one is always a name
 
+    void setBoxPosition(sf::Vector2f vector);
+    void setBoxPosition(size_t box_id,sf::Vector2f vector);
+    void setBoxPosition(size_t box_id,float x_pos,float y_pos);
+
+    void setTextPosition(size_t text_id,float x_pos,float y_pos);
+    void setTextPosition(size_t text_id,sf::Vector2f vector);
+    void setPosition(sf::Vector2f vector);
+    void move(sf::Vector2f vector);
+    sf::Vector2f getPosition();
+    sf::Vector2f getSize();
+    void centerOrigin();
+    void draw(sf::RenderTarget& target);
+
 };
 
 
